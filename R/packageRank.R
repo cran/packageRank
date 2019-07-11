@@ -3,13 +3,12 @@
 #' From RStudio's CRAN Mirror http://cran-logs.rstudio.com/
 #' @param packages Character. Vector of package name(s).
 #' @param date Character. Date.
-#' @param memoization Logical. Use memoisation when downloading logs.
+#' @param memoization Logical. Use memoization when downloading logs.
 #' @return An R data frame.
 #' @import data.table RCurl
 #' @export
 #' @examples
 #' \donttest{
-#'
 #' packageRank(packages = "HistData", date = "2019-01-01")
 #' packageRank(packages = c("h2o", "Rcpp", "rstan"), date = "2019-01-01")
 #' }
@@ -77,7 +76,7 @@ packageRank <- function(packages = "HistData", date = Sys.Date() - 1,
 
 #' Plot method for packageRank().
 #' @param x An object of class "package_rank" created by \code{packageRank()}.
-#' @param graphics_pkg Character. "base" or "ggplot2".
+#' @param graphics Character. "base" or "ggplot2".
 #' @param log_count Logical. Logarithm of package downloads.
 #' @param ... Additional plotting parameters.
 #' @return A base R or ggplot2 plot.
@@ -86,19 +85,16 @@ packageRank <- function(packages = "HistData", date = Sys.Date() - 1,
 #' @export
 #' @examples
 #' \donttest{
-#'
 #' plot(packageRank(packages = "HistData", date = "2019-01-01"))
 #' plot(packageRank(packages = c("h2o", "Rcpp", "rstan"), date = "2019-01-01"))
 #' }
 
-plot.package_rank <- function(x, graphics_pkg = "ggplot2", log_count = TRUE,
-  ...) {
-
+plot.package_rank <- function(x, graphics = NULL, log_count = TRUE, ...) {
   if (is.logical(log_count) == FALSE) stop("log_count must be TRUE or FALSE.")
 
   crosstab <- x$crosstab
   package.data <- x$package.data
-  packages  <- x$packages
+  packages <- x$packages
   date <- x$date
   y.max <- crosstab[1]
   q <- stats::quantile(crosstab)[2:4]
@@ -108,106 +104,23 @@ plot.package_rank <- function(x, graphics_pkg = "ggplot2", log_count = TRUE,
     dat[length(dat)]
   }, numeric(1L))
 
-  if (graphics_pkg == "base") {
+  if (is.null(graphics)) {
+    if (length(packages) == 1) {
+      basePlot(packages, log_count, crosstab, iqr, package.data, y.max, date)
+    } else if (length(packages) > 1) {
+      ggPlot(x, log_count, crosstab, iqr, package.data, y.max, date)
+    } else stop("Error.")
+  } else if (graphics == "base") {
     if (length(packages) > 1) {
-      invisible(lapply(packages, function(x) {
-        basePlot(x, log_count, crosstab, iqr, package.data, y.max, date)
+      invisible(lapply(packages, function(pkg) {
+        basePlot(pkg, log_count, crosstab, iqr, package.data, y.max, date)
       }))
     } else {
       basePlot(packages, log_count, crosstab, iqr, package.data, y.max, date)
     }
-  } else if (graphics_pkg == "ggplot2") {
-    package.data <- x$package.data
-    id <- paste(package.data$packages, "@", date)
-
-    download.data <- data.frame(x = 1:length(crosstab),
-                                y = c(crosstab),
-                                packages = row.names(crosstab),
-                                row.names = NULL,
-                                stringsAsFactors = FALSE)
-
-    download.lst <- rep(list(download.data), length(x$packages))
-
-    for (i in seq_along(download.lst)) {
-      download.lst[[i]]$id <- id[i]
-    }
-
-    download.data <- do.call(rbind, download.lst)
-    first <- cumsum(vapply(download.lst, nrow, numeric(1L))) -
-      length(x$crosstab) + 1
-    last <- sum(vapply(download.lst, nrow, numeric(1L)))
-    iqr.labels <- c("75th", "50th", "25th")
-    iqr.data <- data.frame(x = rep(iqr, length(x$packages)),
-                           y = stats::quantile(crosstab, 0.995),
-                           label = rep(iqr.labels, length(x$packages)),
-                           id = rep(id, each = length(iqr)),
-                           row.names = NULL)
-
-    point.data <- lapply(seq_along(packages), function(i) {
-      download.lst[[i]][download.lst[[i]]$packages %in% packages[i], ]
-    })
-
-    point.data <- do.call(rbind, point.data)
-
-    top.pkg <- paste(download.data[first, "packages"], "=",
-      format(download.data[first, "y"], big.mark = ","))
-    tot.dwnld <- paste("Total =", format(sum(crosstab), big.mark = ","))
-
-    xlabel <- paste0(round(package.data$percentile, 2), "%")
-    ylabel <- format(point.data$y, big.mark = ",")
-
-    if (length(packages) > 1) {
-      label.size <- 2.5
-      ylabel.nudge <- 0.75
-    } else {
-      label.size <- 3.5
-      ylabel.nudge <- 0.5
-    }
-
-    p <- ggplot(data = download.data, aes_string("x", "y")) +
-         geom_line() +
-         geom_vline(xintercept = iqr, colour = "gray", linetype = "dotted") +
-         xlab("Rank") +
-         ylab("Count") +
-         facet_wrap(~ id, ncol = 2) +
-         theme_bw() +
-         theme(panel.grid.major = element_blank(),
-               panel.grid.minor = element_blank(),
-               plot.title = element_text(hjust = 0.5)) +
-         geom_point(data = download.data[first, ],
-                    shape = 1,
-                    colour = "dodgerblue") +
-         geom_text(data = download.data[first, ],
-                   colour = "dodgerblue",
-                   label = top.pkg,
-                   hjust = -0.1,
-                   size = 3) +
-         geom_text(data = data.frame(x = download.data[last, "x"], y = y.max),
-                   colour = "dodgerblue",
-                   label = tot.dwnld,
-                   hjust = 1,
-                   size = 3) +
-         geom_text(data = iqr.data, label = iqr.data$label)
-
-    for (i in seq_along(packages)) {
-      sel <- point.data$package == packages[i] & point.data$id == id[i]
-      p <- p + geom_vline(data = point.data[sel, ],
-                          aes_string(xintercept = "x"), colour = "red") +
-               geom_hline(data = point.data[sel, ],
-                          aes_string(yintercept = "y"), colour = "red")
-    }
-
-    p <- p + geom_point(data = point.data, aes_string("x", "y"), shape = 1,
-                        colour = "red", size = 2) +
-             geom_label(data = point.data, aes_string("x", "y"), fill = "red",
-                        colour = "white", size = label.size, label = ylabel,
-                        nudge_x = 2000) +
-             geom_label(data = point.data, aes_string("x", "y"), fill = "red",
-                        colour = "white", size = label.size, label = xlabel,
-                        nudge_y = ylabel.nudge)
-
-    if (log_count) p + scale_y_log10() else p
-  } else stop('graphics_pkg must be "base" or "ggplot2"')
+  } else if (graphics == "ggplot2") {
+    ggPlot(x, log_count, crosstab, iqr, package.data, y.max, date)
+  } else stop('graphics must be "base" or "ggplot2"')
 }
 
 #' Base R Graphics Plot (Cross-sectional).
@@ -261,6 +174,110 @@ basePlot <- function(pkg, log_count, crosstab, iqr, package.data, y.max, date) {
     labels = paste("Tot = ", format(sum(crosstab), big.mark = ",")), cex = 0.8,
     col = "dodgerblue", pos = 2)
   title(main = paste(pkg, "@", date))
+}
+
+#' ggplot2 Graphics Plot (Cross-sectional).
+#' @param x Object.
+#' @param log_count Logical. Logarithm of package downloads.
+#' @param crosstab Object.
+#' @param iqr Object.
+#' @param package.data Object.
+#' @param y.max Numeric.
+#' @param date Character.
+#' @noRd
+
+ggPlot <- function(x, log_count, crosstab, iqr, package.data, y.max, date) {
+  package.data <- x$package.data
+  packages <- x$packages
+  id <- paste(package.data$packages, "@", date)
+
+  download.data <- data.frame(x = 1:length(crosstab),
+                              y = c(crosstab),
+                              packages = row.names(crosstab),
+                              row.names = NULL,
+                              stringsAsFactors = FALSE)
+
+  download.lst <- rep(list(download.data), length(x$packages))
+
+  for (i in seq_along(download.lst)) {
+    download.lst[[i]]$id <- id[i]
+  }
+
+  download.data <- do.call(rbind, download.lst)
+  first <- cumsum(vapply(download.lst, nrow, numeric(1L))) -
+    length(crosstab) + 1
+  last <- sum(vapply(download.lst, nrow, numeric(1L)))
+  iqr.labels <- c("75th", "50th", "25th")
+  iqr.data <- data.frame(x = rep(iqr, length(x$packages)),
+                         y = stats::quantile(crosstab, 0.995),
+                         label = rep(iqr.labels, length(x$packages)),
+                         id = rep(id, each = length(iqr)),
+                         row.names = NULL)
+
+  point.data <- lapply(seq_along(packages), function(i) {
+    download.lst[[i]][download.lst[[i]]$packages %in% packages[i], ]
+  })
+
+  point.data <- do.call(rbind, point.data)
+
+  top.pkg <- paste(download.data[first, "packages"], "=",
+    format(download.data[first, "y"], big.mark = ","))
+  tot.dwnld <- paste("Total =", format(sum(crosstab), big.mark = ","))
+
+  xlabel <- paste0(round(package.data$percentile, 2), "%")
+  ylabel <- format(point.data$y, big.mark = ",")
+
+  if (length(packages) > 1) {
+    label.size <- 2.5
+    ylabel.nudge <- 0.75
+  } else {
+    label.size <- 3.5
+    ylabel.nudge <- 0.5
+  }
+
+  p <- ggplot(data = download.data, aes_string("x", "y")) +
+       geom_line() +
+       geom_vline(xintercept = iqr, colour = "gray", linetype = "dotted") +
+       xlab("Rank") +
+       ylab("Count") +
+       facet_wrap(~ id, ncol = 2) +
+       theme_bw() +
+       theme(panel.grid.major = element_blank(),
+             panel.grid.minor = element_blank(),
+             plot.title = element_text(hjust = 0.5)) +
+       geom_point(data = download.data[first, ],
+                  shape = 1,
+                  colour = "dodgerblue") +
+       geom_text(data = download.data[first, ],
+                 colour = "dodgerblue",
+                 label = top.pkg,
+                 hjust = -0.1,
+                 size = 3) +
+       geom_text(data = data.frame(x = download.data[last, "x"], y = y.max),
+                 colour = "dodgerblue",
+                 label = tot.dwnld,
+                 hjust = 1,
+                 size = 3) +
+       geom_text(data = iqr.data, label = iqr.data$label)
+
+  for (i in seq_along(packages)) {
+    sel <- point.data$package == packages[i] & point.data$id == id[i]
+    p <- p + geom_vline(data = point.data[sel, ],
+                        aes_string(xintercept = "x"), colour = "red") +
+             geom_hline(data = point.data[sel, ],
+                        aes_string(yintercept = "y"), colour = "red")
+  }
+
+  p <- p + geom_point(data = point.data, aes_string("x", "y"), shape = 1,
+                      colour = "red", size = 2) +
+           geom_label(data = point.data, aes_string("x", "y"), fill = "red",
+                      colour = "white", size = label.size, label = ylabel,
+                      nudge_x = 2000) +
+           geom_label(data = point.data, aes_string("x", "y"), fill = "red",
+                      colour = "white", size = label.size, label = xlabel,
+                      nudge_y = ylabel.nudge)
+
+  if (log_count) p + scale_y_log10() else p
 }
 
 #' Print method for packageRank().

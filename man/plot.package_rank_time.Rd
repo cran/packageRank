@@ -4,22 +4,21 @@
 \alias{plot.package_rank_time}
 \title{Plot method for timeSeriesRank().}
 \usage{
-\method{plot}{package_rank_time}(x, graphics_pkg = "ggplot2",
-  log_count = TRUE, pkg_smooth = TRUE, sample_smooth = TRUE,
-  f = 1/3, ...)
+\method{plot}{package_rank_time}(x, graphics = NULL, log_count = TRUE,
+  smooth = TRUE, sample_smooth = TRUE, f = 1/3, ...)
 }
 \arguments{
 \item{x}{Object. An object of class "time_series" created by \code{packageRankTime()}.}
 
-\item{graphics_pkg}{Character. "base" or "ggplot2".}
+\item{graphics}{Character. "base" or "ggplot2".}
 
 \item{log_count}{Logical. Logarithm of package downloads.}
 
-\item{pkg_smooth}{Logical. Add smoother.}
+\item{smooth}{Logical. Add smoother for selected package.}
 
 \item{sample_smooth}{Logical. lowess background.}
 
-\item{f}{Numeric. stats::lowess() smoother window. For use with graphics_pkg = "base" only.}
+\item{f}{Numeric. stats::lowess() smoother window. For use with graphics = "base" only.}
 
 \item{...}{Additional plotting parameters.}
 }
@@ -31,7 +30,6 @@ Plot method for timeSeriesRank().
 }
 \examples{
 \donttest{
-
 plot(packageRankTime(packages = "HistData", when = "last-week"))
 plot(packageRankTime(packages = c("Rcpp", "rlang", "data.table"), when = "last-month"))
 }

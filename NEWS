@@ -1,56 +1,12 @@
+packageRank 0.2.0
+==================
+
+- implement minor parallelization for packageRankTime().
+- base graphics for single package/date; ggplot2 for multiple packages/dates.
+- fix smooth argument in plot.package_rank_time(graphics_pkg = "base").
+
+
 packageRank 0.1.0
 ==================
 
 - first CRAN release.
-
-
-packageRank 0.0.9048
-==================
-
-- add examples.
-- use package -> packages to match 'cranlogs'.
-
-
-packageRank 0.0.9047
-==================
-
-- switch from cohort to simple stratified sample in packageRankTime().
-
-
-packageRank 0.0.9046
-==================
-
-- copyedit README and vignette.
-- tweak IQR percentile placement in plot.package_rank().
-
-
-packageRank 0.0.9045
-==================
-
-- change log_y argument to log_count.
-- implement log_count for dotcharts.
-- add/fix f smoother span for stats::lowess().
-
-
-packageRank 0.0.9044
-==================
-
-- draft updated README.
-
-
-packageRank 0.0.9043
-==================
-
-- amend package_rank() and print.package_rank().
-
-
-packageRank 0.0.9042
-==================
-
-- amend function documentation.
-
-
-packageRank 0.0.9041
-==================
-
-- first public release.

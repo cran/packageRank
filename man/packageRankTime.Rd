@@ -5,27 +5,26 @@
 \title{Package download counts and rank percentiles (longitudinal).}
 \usage{
 packageRankTime(packages = "HistData", when = "last-month",
-  sample.pct = 5, multi.core = FALSE)
+  sample.pct = 5, multi.core = TRUE)
 }
 \arguments{
 \item{packages}{Character. Character. Vector of package name(s).}
 
 \item{when}{Character. "last-month" or "last-week".}
 
-\item{sample.pct}{Numeric.}
+\item{sample.pct}{Numeric. Percent of packages to sample.}
 
-\item{multi.core}{Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. On Windows, only \code{multi.core = FALSE} is available.}
+\item{multi.core}{Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores to use. Note that due to performance considerations, the number of cores defaults to one on Windows.}
 }
 \description{
 Temporal pattern over last week or month.
 }
 \note{
-Most useful with plot() method. packageRankTime() takes longer to run because it replicates cranlogs::cran_downloads(when = "last-week" or "last-month") with additional computation for ranks and cohort.
+Most useful with plot() method.
 }
 \examples{
 \donttest{
-
-packageRankTime(packages = "HistData", when = "last-week")
-packageRankTime(packages = c("Rcpp", "rlang"), when = "last-month")
+plot(packageRankTime(packages = "HistData", when = "last-week"))
+plot(packageRankTime(packages = c("Rcpp", "rlang", "data.table"), when = "last-month"))
 }
 }

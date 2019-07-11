@@ -3,26 +3,23 @@
 #' Temporal pattern over last week or month.
 #' @param packages Character. Character. Vector of package name(s).
 #' @param when Character. "last-month" or "last-week".
-#' @param sample.pct Numeric.
-#' @param multi.core Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. On Windows, only \code{multi.core = FALSE} is available.
+#' @param sample.pct Numeric. Percent of packages to sample.
+#' @param multi.core Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores to use. Note that due to performance considerations, the number of cores defaults to one on Windows.
 #' @import cranlogs
 #' @export
-#' @note Most useful with plot() method. packageRankTime() takes longer to run because it replicates cranlogs::cran_downloads(when = "last-week" or "last-month") with additional computation for ranks and cohort.
+#' @note Most useful with plot() method.
 #' @examples
 #' \donttest{
-#'
-#' packageRankTime(packages = "HistData", when = "last-week")
-#' packageRankTime(packages = c("Rcpp", "rlang"), when = "last-month")
+#' plot(packageRankTime(packages = "HistData", when = "last-week"))
+#' plot(packageRankTime(packages = c("Rcpp", "rlang", "data.table"), when = "last-month"))
 #' }
 
 packageRankTime <- function(packages = "HistData", when = "last-month",
-  sample.pct = 5, multi.core = FALSE) {
+  sample.pct = 5, multi.core = TRUE) {
 
   if (when %in% c("last-month", "last-week") == FALSE) {
-    stop('when must either be "last-month" or "last-week".')
+    stop('when can only be "last-month" or "last-week".')
   }
-
-  cores <- multiCore(multi.core)
 
   pkg.data <- cranlogs::cran_downloads(packages = packages, when = when)
   start.date <- pkg.data$date[1]
@@ -38,11 +35,12 @@ packageRankTime <- function(packages = "HistData", when = "last-month",
 
   url <- paste0(rstudio.url, year, '/', start.date, ".csv.gz")
   cran_log <- mfetchLog(url)
-  init.pkgs <- unique(cran_log$package)
+  init.pkgs <- unique(cran_log$package) # remove duplicated pkgs (diff versions)
   init.pkgs <- stats::na.omit(init.pkgs)
 
   pkgs <- cran_log[cran_log$package %in% init.pkgs, ]
   crosstab <- table(pkgs$package)
+  cores <- multiCore(multi.core)
 
   rank.percentile <- parallel::mclapply(names(crosstab), function(nm) {
     mean(crosstab < crosstab[nm])
@@ -84,11 +82,11 @@ packageRankTime <- function(packages = "HistData", when = "last-month",
 
 #' Plot method for timeSeriesRank().
 #' @param x Object. An object of class "time_series" created by \code{packageRankTime()}.
-#' @param graphics_pkg Character. "base" or "ggplot2".
+#' @param graphics Character. "base" or "ggplot2".
 #' @param log_count Logical. Logarithm of package downloads.
-#' @param pkg_smooth Logical. Add smoother.
+#' @param smooth Logical. Add smoother for selected package.
 #' @param sample_smooth Logical. lowess background.
-#' @param f Numeric. stats::lowess() smoother window. For use with graphics_pkg = "base" only.
+#' @param f Numeric. stats::lowess() smoother window. For use with graphics = "base" only.
 #' @param ... Additional plotting parameters.
 #' @return A base R or ggplot2 plot.
 #' @import graphics ggplot2
@@ -96,16 +94,15 @@ packageRankTime <- function(packages = "HistData", when = "last-month",
 #' @export
 #' @examples
 #' \donttest{
-#'
 #' plot(packageRankTime(packages = "HistData", when = "last-week"))
 #' plot(packageRankTime(packages = c("Rcpp", "rlang", "data.table"), when = "last-month"))
 #' }
 
-plot.package_rank_time <- function(x, graphics_pkg = "ggplot2",
-  log_count = TRUE, pkg_smooth = TRUE, sample_smooth = TRUE, f = 1/3, ...) {
+plot.package_rank_time <- function(x, graphics = NULL, log_count = TRUE,
+  smooth = TRUE, sample_smooth = TRUE, f = 1/3, ...) {
 
   if (is.logical(log_count) == FALSE) stop("log_count must be TRUE or FALSE.")
-  if (is.logical(pkg_smooth) == FALSE) stop("pkg_smooth must be TRUE or FALSE.")
+  if (is.logical(smooth) == FALSE) stop("smooth must be TRUE or FALSE.")
   if (is.logical(sample_smooth) == FALSE) {
     stop("sample_smooth must be TRUE or FALSE.")
   }
@@ -120,19 +117,28 @@ plot.package_rank_time <- function(x, graphics_pkg = "ggplot2",
     if (any(pkg.data$count == 0)) pkg.data$count <- pkg.data$count + 1
   }
 
-  if (graphics_pkg == "base") {
+  if (is.null(graphics)) {
+    if (length(x$packages) == 1) graphics <- "base"
+    else if (length(x$packages) > 1) graphics <- "ggplot2"
+  } else {
+    if (all(graphics %in% c("base", "ggplot2") == FALSE))
+    stop('graphics must be "base" or "ggplot2"')
+  }
+
+  if (graphics == "base") {
     if (length(packages) > 1) {
       invisible(lapply(packages, function(pkg) {
-        pkg.data.sel <- pkg.data[pkg.data$packages == pkg, ]
-        basePlotTime(x, log_count, cran_smpl, pkg.data.sel, sample_smooth, f)
+        pkg.data.sel <- pkg.data[pkg.data$package == pkg, ]
+        basePlotTime(x, log_count, cran_smpl, pkg.data.sel, smooth,
+          sample_smooth, f)
         title(main = pkg)
       }))
     } else if (length(packages) == 1) {
-      basePlotTime(x, log_count, cran_smpl, pkg.data, sample_smooth, f)
+      basePlotTime(x, log_count, cran_smpl, pkg.data, smooth, sample_smooth, f)
       title(main = packages)
     }
 
-  } else if (graphics_pkg == "ggplot2") {
+  } else if (graphics == "ggplot2") {
     p <- ggplot(data = pkg.data, aes_string("date", "count")) +
            theme_bw() +
            theme(panel.grid.major = element_blank(),
@@ -161,13 +167,13 @@ plot.package_rank_time <- function(x, graphics_pkg = "ggplot2",
     p <- p + geom_line(colour = "red", size = 0.75) +
              geom_point(shape = 1, colour = "red", size = 2)
 
-    if (pkg_smooth) p <- p + geom_smooth(colour = "blue",
-                                         method = "loess",
-                                         se = FALSE)
+    if (smooth) p <- p + geom_smooth(colour = "blue",
+                                     method = "loess",
+                                     se = FALSE)
 
     if (log_count) p + scale_y_log10() else p
 
-  } else stop('graphics_pkg must be "base" or "ggplot2"')
+  } else stop('graphics must be "base" or "ggplot2"')
 }
 
 #' Print method for timeSeriesRank().
@@ -194,12 +200,13 @@ summary.package_rank_time <- function(object, ...) {
 #' @param log_count Logical. Logarithm of package downloads.
 #' @param cran_smpl Object.
 #' @param pkg.data Object.
+#' @param smooth Logical. Add smoother for selected package.
 #' @param sample_smooth Logical. lowess background.
 #' @param f Numeric. stats::lowess() smoother window.
 #' @noRd
 
-basePlotTime <- function(x, log_count, cran_smpl, pkg.data, sample_smooth,
-  f) {
+basePlotTime <- function(x, log_count, cran_smpl, pkg.data, smooth,
+  sample_smooth, f) {
 
   if (log_count) {
     plot(cran_smpl$date, log10(cran_smpl$count), pch = NA,
@@ -221,9 +228,10 @@ basePlotTime <- function(x, log_count, cran_smpl, pkg.data, sample_smooth,
 
     lines(pkg.data$date, log10(pkg.data$count), lwd = 2, col = "red",
       type = "o")
-    lines(stats::lowess(pkg.data$date, log10(pkg.data$count), f = f),
-      col = "blue", lwd = 2)
-
+    if (smooth) {
+      lines(stats::lowess(pkg.data$date, log10(pkg.data$count), f = f),
+        col = "blue", lwd = 2)
+    }
   } else {
     plot(cran_smpl$date, cran_smpl$count, pch = NA, ylim = c(0, max(x$y.max)),
       xlab = "Date", ylab = "Count")

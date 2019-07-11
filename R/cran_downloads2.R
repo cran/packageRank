@@ -14,7 +14,6 @@
 #' @export
 #' @examples
 #' \donttest{
-#'
 #' cran_downloads2(packages = "HistData", from = "2019-01-01", to = "2019-01-01")
 #' cran_downloads2(packages = c("Rcpp", "rlang"), when = "last-week")
 #' }
@@ -39,12 +38,12 @@ cran_downloads2 <- function(packages = NULL,
 #' Plot method for cran_downloads2().
 #'
 #' @param x object.
-#' @param graphics_pkg Character. "base" or "ggplot2".
+#' @param graphics Character. NULL, "base" or "ggplot2".
 #' @param points Logical. Plot points.
 #' @param log_count Logical. Logarithm of package downloads.
 #' @param smooth Logical. Add smoother.
-#' @param se Logical. Works only with graphics_pkg = "ggplot2".
-#' @param f Numeric. stats::lowess() smoother window. For use with graphics_pkg = "base" only.
+#' @param se Logical. Works only with graphics = "ggplot2".
+#' @param f Numeric. stats::lowess() smoother window. For use with graphics = "base" only.
 #' @param ... Additional plotting parameters.
 #' @return A base R or ggplot2 plot.
 #' @import graphics ggplot2
@@ -52,13 +51,12 @@ cran_downloads2 <- function(packages = NULL,
 #' @export
 #' @examples
 #' \donttest{
-#'
 #' plot(cran_downloads2(packages = c("Rcpp", "rlang", "data.table"), from = "2019-05-01",
 #'   to = "2019-05-01"))
 #' plot(cran_downloads2(packages = c("Rcpp", "rlang", "data.table"), when = "last-month"))
 #' }
 
-plot.cranlogs <- function(x, graphics_pkg = "ggplot2", points = TRUE,
+plot.cranlogs <- function(x, graphics = NULL, points = TRUE,
   log_count = FALSE, smooth = FALSE, se = FALSE, f = 1/3, ...) {
 
   if (is.logical(log_count) == FALSE) stop("log_count must be TRUE or FALSE.")
@@ -69,7 +67,16 @@ plot.cranlogs <- function(x, graphics_pkg = "ggplot2", points = TRUE,
   dat <- x$cranlogs.data
   days.observed <- unique(dat$date)
 
-  if (graphics_pkg == "base") {
+  if (is.null(graphics)) {
+    if (length(x$packages) == 1 | length(unique(dat$date)) == 1) {
+      graphics <- "base"
+    } else graphics <- "ggplot2"
+  } else {
+    if (all(graphics %in% c("base", "ggplot2") == FALSE))
+    stop('graphics must be "base" or "ggplot2"')
+  }
+
+  if (graphics == "base") {
     if (length(x$packages) > 1) {
       if (length(days.observed) == 1) {
         if (log_count) {
@@ -118,7 +125,7 @@ plot.cranlogs <- function(x, graphics_pkg = "ggplot2", points = TRUE,
       }
     }
 
-  } else if (graphics_pkg == "ggplot2") {
+  } else if (graphics == "ggplot2") {
     if (length(days.observed) == 1) {
       p <- ggplot(dat) +
            geom_point(aes_string("count", "package")) +
@@ -154,7 +161,7 @@ plot.cranlogs <- function(x, graphics_pkg = "ggplot2", points = TRUE,
         p + scale_y_log10()
       } else p
     }
-  } else stop('graphics_pkg must be "base" or "ggplot2"')
+  } else stop('graphics must be "base" or "ggplot2"')
 }
 
 #' Print method for packageRank().
