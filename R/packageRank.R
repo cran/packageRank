@@ -2,7 +2,7 @@
 #'
 #' From RStudio's CRAN Mirror http://cran-logs.rstudio.com/
 #' @param packages Character. Vector of package name(s).
-#' @param date Character. Date.
+#' @param date Character. Date. yyyy-mm-dd
 #' @param memoization Logical. Use memoization when downloading logs.
 #' @return An R data frame.
 #' @import data.table RCurl
@@ -30,12 +30,20 @@ packageRank <- function(packages = "HistData", date = Sys.Date() - 1,
     stop("Log for ", date, " not (yet) available. ", msg)
   }
 
-  # tools::CRAN_package_db() not always current/up-to-date?
+  # NA for Package or R
+  cran_log <- cran_log[-which(is.na(cran_log$package)), ]
+
   if (any(packages %in% unique(cran_log$package) == FALSE)) {
     stop("Package not found in log.")
   }
 
   crosstab <- sort(table(cran_log$package), decreasing = TRUE)
+
+  # if (length(zero.downloads) > 0) {
+  #   crosstab <- c(crosstab, rep(0, length(zero.downloads)))
+  #   sel <- (length(crosstab) - length(zero.downloads) + 1):length(crosstab)
+  #   names(crosstab)[sel] <- sort(zero.downloads)
+  # }
 
   # packages in bin
   pkg.bin <- lapply(packages, function(nm) {
@@ -81,7 +89,6 @@ packageRank <- function(packages = "HistData", date = Sys.Date() - 1,
 #' @param ... Additional plotting parameters.
 #' @return A base R or ggplot2 plot.
 #' @import graphics ggplot2
-#' @importFrom ggplot2 ggplot aes_string scale_y_log10 geom_point geom_line facet_wrap theme
 #' @export
 #' @examples
 #' \donttest{
@@ -107,6 +114,7 @@ plot.package_rank <- function(x, graphics = NULL, log_count = TRUE, ...) {
   if (is.null(graphics)) {
     if (length(packages) == 1) {
       basePlot(packages, log_count, crosstab, iqr, package.data, y.max, date)
+      title(main = paste(packages, "@", x$date))
     } else if (length(packages) > 1) {
       ggPlot(x, log_count, crosstab, iqr, package.data, y.max, date)
     } else stop("Error.")
@@ -114,9 +122,11 @@ plot.package_rank <- function(x, graphics = NULL, log_count = TRUE, ...) {
     if (length(packages) > 1) {
       invisible(lapply(packages, function(pkg) {
         basePlot(pkg, log_count, crosstab, iqr, package.data, y.max, date)
+        title(main = paste(packages, "@", x$date))
       }))
     } else {
       basePlot(packages, log_count, crosstab, iqr, package.data, y.max, date)
+      title(main = paste(packages, "@", x$date))
     }
   } else if (graphics == "ggplot2") {
     ggPlot(x, log_count, crosstab, iqr, package.data, y.max, date)
@@ -173,7 +183,6 @@ basePlot <- function(pkg, log_count, crosstab, iqr, package.data, y.max, date) {
   text(which(names(crosstab) == names(crosstab[length(crosstab)])), y.max,
     labels = paste("Tot = ", format(sum(crosstab), big.mark = ",")), cex = 0.8,
     col = "dodgerblue", pos = 2)
-  title(main = paste(pkg, "@", date))
 }
 
 #' ggplot2 Graphics Plot (Cross-sectional).
@@ -191,9 +200,9 @@ ggPlot <- function(x, log_count, crosstab, iqr, package.data, y.max, date) {
   packages <- x$packages
   id <- paste(package.data$packages, "@", date)
 
-  download.data <- data.frame(x = 1:length(crosstab),
+  download.data <- data.frame(x = seq_along(crosstab),
                               y = c(crosstab),
-                              packages = row.names(crosstab),
+                              packages = names(crosstab),
                               row.names = NULL,
                               stringsAsFactors = FALSE)
 
@@ -303,13 +312,3 @@ print.package_rank <- function(x, ...) {
 summary.package_rank <- function(object, ...) {
   object$package.data
 }
-
-#' Fetch Package Logs.
-#'
-#' @param x Character. URL
-#' @import data.table memoise
-#' @export
-#' @note mFetchLog() is memoized version.
-
-fetchLog <- function(x) data.table::fread(x)
-mfetchLog <- memoise::memoise(fetchLog)

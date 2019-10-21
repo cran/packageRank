@@ -1,3 +1,16 @@
+packageRank 0.3.0
+==================
+
+- add cranDownloads().
+  - enable "yyyy-mm-dd", "yyyy-mm" or "yyyy" in cranDownloads(from, to).
+  - add plot.cran_downloads(points = "auto").
+  - add plot.cran_downloads(r.version).
+- deprecate cran_downloads2().
+- add dayOfMonth().
+- add bioconductorDownloads().
+- add bioconductorRank().
+
+
 packageRank 0.2.0
 ==================
 

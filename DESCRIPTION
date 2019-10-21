@@ -2,8 +2,8 @@ Package: packageRank
 Type: Package
 Title: Computation and Visualization of Package Download Counts and
         Percentiles
-Version: 0.2.0
-Date: 2019-07-11
+Version: 0.3.0
+Date: 2019-10-21
 Authors@R: person("Peter Li", email = "lindbrook@gmail.com",
     role = c("aut", "cre"))
 Maintainer: Peter Li <lindbrook@gmail.com>
@@ -17,11 +17,12 @@ Encoding: UTF-8
 Language: en-US
 LazyData: true
 RoxygenNote: 6.1.1
-Imports: cranlogs, data.table (>= 1.12.2), ggplot2, memoise, RCurl
+Imports: cranlogs, data.table (>= 1.12.2), ggplot2, grDevices, memoise,
+        RCurl, rversions, stats
 Suggests: knitr, rmarkdown
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2019-07-11 16:41:15 UTC; peter
+Packaged: 2019-10-21 19:30:12 UTC; peter
 Author: Peter Li [aut, cre]
 Repository: CRAN
-Date/Publication: 2019-07-11 17:12:45 UTC
+Date/Publication: 2019-10-21 19:50:02 UTC
