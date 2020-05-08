@@ -4,7 +4,8 @@
 \alias{cranDownloads}
 \title{Daily package downloads from the RStudio CRAN mirror.}
 \usage{
-cranDownloads(packages = NULL, when = NULL, from = NULL, to = NULL)
+cranDownloads(packages = NULL, when = NULL, from = NULL, to = NULL,
+  check.package = TRUE, dev.mode = FALSE)
 }
 \arguments{
 \item{packages}{A character vector, the packages to query,
@@ -18,9 +19,13 @@ If this is given, then \code{from} and \code{to} are ignored.}
 \item{from}{Start date as \code{yyyy-mm-dd}, \code{yyyy-mm} or \code{yyyy}.}
 
 \item{to}{End date as \code{yyyy-mm-dd}, \code{yyyy-mm} or \code{yyyy}.}
+
+\item{check.package}{Logical. Validate and "spell check" package.}
+
+\item{dev.mode}{Logical. Use validatePackage0() to scrape CRAN.}
 }
 \description{
-S3 implementation of cranlogs::cran_downloads().
+Enhanced implementation of cranlogs::cran_downloads().
 }
 \examples{
 \donttest{
@@ -31,10 +36,10 @@ cranDownloads(packages = "HistData", when = "last-month")
 # January 7 - 31, 2019
 cranDownloads(packages = "HistData", from = "2019-01-07", to = "2019-01-31")
 
-# February to March 2019
+# February through March 2019
 cranDownloads(packages = "HistData", from = "2019-02", to = "2019-03")
 
-# 2019 year-to-date
-cranDownloads(packages = "HistData", from = 2019)
+# 2020 year-to-date
+cranDownloads(packages = "HistData", from = 2020)
 }
 }

@@ -1,3 +1,51 @@
+packageRank 0.3.5
+==================
+
+# Blog specific functions #
+
+- countsRanks()
+- inflationPlot()
+
+
+# Data Changes #
+
+- add blog.data
+
+
+# Fixes #
+
+- fixDate_2012() for packageLog()
+  Correct mislabeled filenames for 2012 logs RStudio's CRAN download logs at
+  http://cran-logs.rstudio.com/.
+
+- fix "`geom_smooth()` using formula 'y ~ x'" warning for 'ggplot2' v3.3.0.
+
+
+# Function Change #
+
+- enable arbitrary "to" argument without "from" in cranDownloads()
+  e.g., cranDownloads(from = NULL, to = "2020-01-01").
+- add/amend plot.cranDownloads(package.version = FALSE, r.version = FALSE).
+- set plot.cranDownloads(points = "auto") for <= 45 days.
+- "spell check" package names via "check.package" argument
+  cranDownload(), packageDistribution(), packageRank()
+- deprecate packageRankTime() -> plot.cranDownloads(population.plot = TRUE)
+- use packageLog(packages = NULL) to view a day's log.
+- enable negative filter values in packageLog() and packageRank().
+
+
+# New Functions #
+
+- archivePackages()
+- countryPackage()
+- packageArchive()
+- packageCountry()
+- packageDistribution()
+- packageHistory() uses 'pkgsearch'; packageHistory0() scrapes CRAN.
+- packageInfo()
+- validatePackage() uses 'pkgsearch'; validatePackage0() scrapes CRAN.
+
+
 packageRank 0.3.0
 ==================
 

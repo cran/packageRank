@@ -1,49 +1,67 @@
-#' Package download counts and rank percentiles (cross-sectional).
+#' Package download counts and rank percentiles.
 #'
 #' From RStudio's CRAN Mirror http://cran-logs.rstudio.com/
 #' @param packages Character. Vector of package name(s).
-#' @param date Character. Date. yyyy-mm-dd
+#' @param date Character. Date. "yyyy-mm-dd".
+#' @param size.filter Logical or Numeric. If Logical, TRUE filters out downloads less than 1000 bytes. If Numeric, a positive value sets the minimum download size (in bytes) to consider; a negative value sets the maximum download size to consider.
 #' @param memoization Logical. Use memoization when downloading logs.
+#' @param check.package Logical. Validate and "spell check" package.
+#' @param dev.mode Logical. Use validatePackage0() to scrape CRAN.
 #' @return An R data frame.
-#' @import data.table RCurl
 #' @export
 #' @examples
 #' \donttest{
-#' packageRank(packages = "HistData", date = "2019-01-01")
-#' packageRank(packages = c("h2o", "Rcpp", "rstan"), date = "2019-01-01")
+#' packageRank(packages = "HistData", date = "2020-01-01")
+#' packageRank(packages = c("h2o", "Rcpp", "rstan"), date = "2020-01-01")
 #' }
 
 packageRank <- function(packages = "HistData", date = Sys.Date() - 1,
-  memoization = TRUE) {
+  size.filter = TRUE, memoization = TRUE, check.package = TRUE,
+  dev.mode = FALSE) {
 
-  ymd <- as.Date(date)
-  if (ymd > Sys.Date()) stop("Can't see into the future!")
-  year <- as.POSIXlt(ymd)$year + 1900
-  rstudio.url <- "http://cran-logs.rstudio.com/"
-  url <- paste0(rstudio.url, year, '/', ymd, ".csv.gz")
-
-  if (RCurl::url.exists(url)) {
-    if (memoization) cran_log <- mfetchLog(url)
-    else cran_log <- fetchLog(url)
-  } else {
-    msg <- "Check your internet connection or try the previous day."
-    stop("Log for ", date, " not (yet) available. ", msg)
+  if (check.package) {
+    if (dev.mode) {
+      pkg.chk <- validatePackage0(packages)
+    } else {
+      pkg.chk <- validatePackage(packages)
+    }
+    if (is.list(pkg.chk)) {
+      error <- paste(pkg.chk$invalid, collapse = ", ")
+      if (length(pkg.chk$valid) == 0) {
+        stop(error, ": misspelled or not on CRAN/Archive.")
+      } else {
+        warning(error, ": misspelled or not on CRAN/Archive.")
+        packages <- pkg.chk$valid
+      }
+    }
   }
 
-  # NA for Package or R
-  cran_log <- cran_log[-which(is.na(cran_log$package)), ]
+  date <- check10CharDate(date)
+  ymd <- fixDate_2012(date)
+  cran_log <- fetchCranLog(date = ymd, memoization = memoization)
+  cran_log <- cran_log[!is.na(cran_log$package), ]
 
-  if (any(packages %in% unique(cran_log$package) == FALSE)) {
-    stop("Package not found in log.")
+  if (size.filter) {
+    if (is.numeric(size.filter)) {
+      if (size.filter >= 0) {
+          cran_log <- cran_log[cran_log$size >= size.filter, ]
+        } else if (size.filter < 0) {
+          cran_log <- cran_log[cran_log$size < -size.filter, ]
+        }
+    } else if (is.logical(size.filter)) {
+      cran_log <- cran_log[cran_log$size >= 1000, ]
+    } else stop("'size.filter' must be Logical or Numeric.")
+  }
+
+  if (all(packages %in% unique(cran_log$package) == FALSE)) {
+    stop(packages, ": not in log (not downloaded).")
+  } else if (any(packages %in% unique(cran_log$package) == FALSE)) {
+    err <- packages[packages %in% unique(cran_log$package) == FALSE]
+    warning(err, ": not in log (not downloaded).")
+    packages <- packages[packages %in% unique(cran_log$package)]
   }
 
   crosstab <- sort(table(cran_log$package), decreasing = TRUE)
-
-  # if (length(zero.downloads) > 0) {
-  #   crosstab <- c(crosstab, rep(0, length(zero.downloads)))
-  #   sel <- (length(crosstab) - length(zero.downloads) + 1):length(crosstab)
-  #   names(crosstab)[sel] <- sort(zero.downloads)
-  # }
 
   # packages in bin
   pkg.bin <- lapply(packages, function(nm) {
@@ -62,7 +80,7 @@ packageRank <- function(packages = "HistData", date = Sys.Date() - 1,
   tot.pkgs <- length(crosstab)
 
   pkg.percentile <- vapply(packages, function(x) {
-    round(100 * mean(crosstab < crosstab[x]), 1)
+    100 * mean(crosstab < crosstab[x])
   }, numeric(1L))
 
   dat <- data.frame(date = ymd,
@@ -78,25 +96,24 @@ packageRank <- function(packages = "HistData", date = Sys.Date() - 1,
   out <- list(packages = packages, date = ymd, package.data = dat,
     crosstab = crosstab)
 
-  class(out) <- "package_rank"
+  class(out) <- "packageRank"
   out
 }
 
 #' Plot method for packageRank().
-#' @param x An object of class "package_rank" created by \code{packageRank()}.
+#' @param x An object of class "packageRank" created by \code{packageRank()}.
 #' @param graphics Character. "base" or "ggplot2".
 #' @param log_count Logical. Logarithm of package downloads.
 #' @param ... Additional plotting parameters.
 #' @return A base R or ggplot2 plot.
-#' @import graphics ggplot2
 #' @export
 #' @examples
 #' \donttest{
-#' plot(packageRank(packages = "HistData", date = "2019-01-01"))
-#' plot(packageRank(packages = c("h2o", "Rcpp", "rstan"), date = "2019-01-01"))
+#' plot(packageRank(packages = "HistData", date = "2020-01-01"))
+#' plot(packageRank(packages = c("h2o", "Rcpp", "rstan"), date = "2020-01-01"))
 #' }
 
-plot.package_rank <- function(x, graphics = NULL, log_count = TRUE, ...) {
+plot.packageRank <- function(x, graphics = NULL, log_count = TRUE, ...) {
   if (is.logical(log_count) == FALSE) stop("log_count must be TRUE or FALSE.")
 
   crosstab <- x$crosstab
@@ -114,7 +131,6 @@ plot.package_rank <- function(x, graphics = NULL, log_count = TRUE, ...) {
   if (is.null(graphics)) {
     if (length(packages) == 1) {
       basePlot(packages, log_count, crosstab, iqr, package.data, y.max, date)
-      title(main = paste(packages, "@", x$date))
     } else if (length(packages) > 1) {
       ggPlot(x, log_count, crosstab, iqr, package.data, y.max, date)
     } else stop("Error.")
@@ -122,18 +138,16 @@ plot.package_rank <- function(x, graphics = NULL, log_count = TRUE, ...) {
     if (length(packages) > 1) {
       invisible(lapply(packages, function(pkg) {
         basePlot(pkg, log_count, crosstab, iqr, package.data, y.max, date)
-        title(main = paste(packages, "@", x$date))
       }))
     } else {
       basePlot(packages, log_count, crosstab, iqr, package.data, y.max, date)
-      title(main = paste(packages, "@", x$date))
     }
   } else if (graphics == "ggplot2") {
     ggPlot(x, log_count, crosstab, iqr, package.data, y.max, date)
   } else stop('graphics must be "base" or "ggplot2"')
 }
 
-#' Base R Graphics Plot (Cross-sectional).
+#' Base R Graphics Plot.
 #' @param pkg Object.
 #' @param log_count Logical. Logarithm of package downloads.
 #' @param crosstab Object.
@@ -183,9 +197,16 @@ basePlot <- function(pkg, log_count, crosstab, iqr, package.data, y.max, date) {
   text(which(names(crosstab) == names(crosstab[length(crosstab)])), y.max,
     labels = paste("Tot = ", format(sum(crosstab), big.mark = ",")), cex = 0.8,
     col = "dodgerblue", pos = 2)
+
+  if (class(date) == "Date" ) {
+    day <- weekdays(as.Date(date), abbreviate = TRUE)
+    title(main = paste0(pkg, " @ ", date, " (", day, ")"))
+  } else {
+    title(main = paste0(pkg, " @ ", date))
+  }
 }
 
-#' ggplot2 Graphics Plot (Cross-sectional).
+#' ggplot2 Graphics Plot.
 #' @param x Object.
 #' @param log_count Logical. Logarithm of package downloads.
 #' @param crosstab Object.
@@ -198,8 +219,14 @@ basePlot <- function(pkg, log_count, crosstab, iqr, package.data, y.max, date) {
 ggPlot <- function(x, log_count, crosstab, iqr, package.data, y.max, date) {
   package.data <- x$package.data
   packages <- x$packages
-  id <- paste(package.data$packages, "@", date)
 
+  if (class(date) == "Date") {
+    day <- weekdays(as.Date(date), abbreviate = TRUE)
+    id <- paste0(package.data$packages, " @ ", date, " (", day, ")")
+  } else {
+    id <- paste0(package.data$packages, " @ ", date)
+  }
+  
   download.data <- data.frame(x = seq_along(crosstab),
                               y = c(crosstab),
                               packages = names(crosstab),
@@ -290,25 +317,27 @@ ggPlot <- function(x, log_count, crosstab, iqr, package.data, y.max, date) {
 }
 
 #' Print method for packageRank().
-#' @param x An object of class "package_rank" created by \code{packageRank()}
+#' @param x An object of class "packageRank" created by \code{packageRank()}
 #' @param ... Additional parameters.
 #' @export
 
-print.package_rank <- function(x, ...) {
+print.packageRank <- function(x, ...) {
   dat <- x$package.data
+  dat$downloads <- format(dat$downloads, big.mark = ",")
   rank <- paste(format(dat$rank, big.mark = ","), "of",
                 format(dat$total.packages, big.mark = ","))
-  out <- data.frame(dat[, c("date", "packages", "downloads", "percentile")],
-    rank, stringsAsFactors = FALSE, row.names = NULL)
+  out <- data.frame(dat[, c("date", "packages", "downloads")], rank,
+    percentile = round(dat[, "percentile"], 1), stringsAsFactors = FALSE,
+    row.names = NULL)
   print(out)
 }
 
 #' Summary method for packageRank().
-#' @param object Object. An object of class "package_rank" created by \code{packageRank()}
+#' @param object Object. An object of class "packageRank" created by \code{packageRank()}
 #' @param ... Additional parameters.
 #' @export
 #' @note This is useful for directly accessing the data frame.
 
-summary.package_rank <- function(object, ...) {
+summary.packageRank <- function(object, ...) {
   object$package.data
 }

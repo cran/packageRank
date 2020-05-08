@@ -1,4 +1,4 @@
-#' Annual/monthly package downloads from Bioconductor (beta).
+#' Annual/monthly package downloads from Bioconductor.
 #'
 #' @param packages Character. Vector of package names.
 #' @param when \code{"last-year"}, or \code{"year-to-date"} or \code{"ytd"}.
@@ -24,7 +24,7 @@
 #' # from 2015 to current year
 #' bioconductorDownloads(packages = "clusterProfiler", from = 2015)
 #'
-#' # 2015 through 2018 (yearly)
+#' # 2010 through 2015 (yearly)
 #' bioconductorDownloads(packages = "clusterProfiler", from = 2010, to = 2015, observation = "year")
 #'
 #' # selected year (yearly)
@@ -33,7 +33,7 @@
 #' # selected year (monthly)
 #' bioconductorDownloads(packages = "clusterProfiler", from = "2015-01", to = "2015-12")
 #'
-#' # June 2014 through March 2018
+#' # June 2014 through March 2015
 #' bioconductorDownloads(packages = "clusterProfiler", from = "2014-06", to = "2015-03")
 #' }
 
@@ -68,11 +68,11 @@ bioconductorDownloads <- function(packages = NULL, from = NULL, to = NULL,
 
   out <- list(data = dat, packages = packages, current.date = current.date,
     current.yr = current.yr, current.mo = current.mo, observation = observation)
-  class(out) <- "bioconductor"
+  class(out) <- "bioconductorDownloads"
   out
 }
 
-#' Plot method for bioconductor_downloads().
+#' Plot method for bioconductorDownloads().
 #'
 #' @param x object.
 #' @param graphics Character. NULL, "base" or "ggplot2".
@@ -93,7 +93,7 @@ bioconductorDownloads <- function(packages = NULL, from = NULL, to = NULL,
 #' plot(bioconductorDownloads(packages = c("graph", "IRanges", "S4Vectors"), from = 2018))
 #' }
 
-plot.bioconductor <- function(x, graphics = NULL, count = "download",
+plot.bioconductorDownloads <- function(x, graphics = NULL, count = "download",
   points = "auto", smooth = FALSE, smooth.f = 2/3, se = FALSE,
   log_count = FALSE, ...) {
 
@@ -150,7 +150,7 @@ plot.bioconductor <- function(x, graphics = NULL, count = "download",
 #' @param ... Additional parameters.
 #' @export
 
-print.bioconductor <- function(x, ...) {
+print.bioconductorDownloads <- function(x, ...) {
   if (is.data.frame(x$data)) print(x$data)
   else if (is.list(x$data)) {
     out <- do.call(rbind, x$data)
@@ -165,7 +165,7 @@ print.bioconductor <- function(x, ...) {
 #' @param ... Additional parameters.
 #' @export
 
-summary.bioconductor <- function(object, ...) {
+summary.bioconductorDownloads <- function(object, ...) {
   if (is.data.frame(object$data)) object$data
   else if (is.list(object$data)) {
     out <- do.call(rbind, object$data)
@@ -395,16 +395,17 @@ gg_bioc_plot <- function(x, graphics, count, points, smooth, smooth.f, se,
 
   if (points & log_count & smooth) {
     p <- p + geom_point(data = dat[!dat$date %in% oip, ]) + scale_y_log10() +
-      geom_smooth(method = "loess", se = se)
+      geom_smooth(method = "loess", formula = "y ~ x", se = se)
   } else if (points & log_count & !smooth) {
     p <- p + geom_point(data = dat[!dat$date %in% oip, ]) + scale_y_log10()
   } else if (points & !log_count & smooth) {
     p <- p +  geom_point(data = dat[!dat$date %in% oip, ]) +
-      geom_smooth(method = "loess", se = se)
+      geom_smooth(method = "loess", formula = "y ~ x", se = se)
   } else if (!points & log_count & smooth) {
-    p <- p + scale_y_log10() + geom_smooth(method = "loess", se = se)
+    p <- p + scale_y_log10() + geom_smooth(method = "loess", formula = "y ~ x",
+      se = se)
   } else if (!points & !log_count & smooth) {
-    p <- p + geom_smooth(method = "loess", se = se)
+    p <- p + geom_smooth(method = "loess", formula = "y ~ x", se = se)
   } else if (points & !log_count & !smooth) {
     p <- p + geom_point(data = dat[!dat$date %in% oip, ])
   } else if (!points & log_count & !smooth) {

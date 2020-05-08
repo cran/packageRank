@@ -2,17 +2,24 @@
 % Please edit documentation in R/packageRank.R
 \name{packageRank}
 \alias{packageRank}
-\title{Package download counts and rank percentiles (cross-sectional).}
+\title{Package download counts and rank percentiles.}
 \usage{
 packageRank(packages = "HistData", date = Sys.Date() - 1,
-  memoization = TRUE)
+  size.filter = TRUE, memoization = TRUE, check.package = TRUE,
+  dev.mode = FALSE)
 }
 \arguments{
 \item{packages}{Character. Vector of package name(s).}
 
-\item{date}{Character. Date. yyyy-mm-dd}
+\item{date}{Character. Date. "yyyy-mm-dd".}
+
+\item{size.filter}{Logical or Numeric. If Logical, TRUE filters out downloads less than 1000 bytes. If Numeric, a positive value sets the minimum download size (in bytes) to consider; a negative value sets the maximum download size to consider.}
 
 \item{memoization}{Logical. Use memoization when downloading logs.}
+
+\item{check.package}{Logical. Validate and "spell check" package.}
+
+\item{dev.mode}{Logical. Use validatePackage0() to scrape CRAN.}
 }
 \value{
 An R data frame.
@@ -22,7 +29,7 @@ From RStudio's CRAN Mirror http://cran-logs.rstudio.com/
 }
 \examples{
 \donttest{
-packageRank(packages = "HistData", date = "2019-01-01")
-packageRank(packages = c("h2o", "Rcpp", "rstan"), date = "2019-01-01")
+packageRank(packages = "HistData", date = "2020-01-01")
+packageRank(packages = c("h2o", "Rcpp", "rstan"), date = "2020-01-01")
 }
 }
