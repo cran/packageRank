@@ -1,34 +1,71 @@
-#' fread() to data.frame.
-#'
-#' @param x Character. URL
-#' @import data.table memoise
-#' @importFrom R.utils decompressFile
-#' @export
-#' @note mFetchLog() is memoized version.
-
-fetchLog <- function(x) as.data.frame(data.table::fread(x))
-mfetchLog <- memoise::memoise(fetchLog)
-
 #' Fetch CRAN Logs.
 #'
 #' @param date Character. Date. yyyy-mm-dd.
 #' @param memoization Logical. Use memoization when downloading logs.
+#' @param dev.mode Logical. Use Base R code.
 #' @export
 
-fetchCranLog <- function(date, memoization) {
-  if (date > Sys.Date()) stop("Can't see into the future!")
+fetchCranLog <- function(date, memoization = FALSE, dev.mode = FALSE) {
   year <- as.POSIXlt(date)$year + 1900
   rstudio.url <- "http://cran-logs.rstudio.com/"
-  url <- paste0(rstudio.url, year, '/', date, ".csv.gz")
+  log.url <- paste0(rstudio.url, year, '/', date, ".csv.gz")
 
-  if (RCurl::url.exists(url)) {
-    if (memoization) {
-      cran_log <- mfetchLog(url)
+  # R default is 60
+  orig.timeout <- getOption("timeout")
+  if (orig.timeout < 300L) options(timeout = 300L)
+
+  if (RCurl::url.exists(log.url)) {
+    if (dev.mode) {
+      cran_log <- fetchLog2(log.url, memoization)
     } else {
-      cran_log <- fetchLog(url)
+      if (memoization) {
+        cran_log <- mfetchLog(log.url)
+      } else {
+        cran_log <- fetchLog(log.url)
+      }
     }
   } else {
-    msg <- "Check your internet connection or try the previous day."
-    stop("Log for ", date, " not (yet) available. ", msg)
+    msg <- " should be available but not on server."
+    stop("Log for ", date, msg, call. = FALSE)
   }
+
+  options(timeout = orig.timeout)
+  cran_log
 }
+
+#' fread() to data.frame.
+#'
+#' @param x Character. URL.
+#' @import data.table memoise
+#' @importFrom R.utils decompressFile
+#' @note mfetchLog() is memoized version.
+#' @noRd
+
+fetchLog <- function(x) data.table::fread(x, data.table = FALSE)
+mfetchLog <- memoise::memoise(fetchLog)
+
+#' Get gzipped data at URL.
+#'
+#' Base R version.
+#' @param x Character. URL.
+#' @param memoization Logical. Use memoization
+#' @noRd
+
+fetchLog2 <- function(x, memoization = FALSE) {
+  con <- gzcon(url(x))
+  if (memoization) {
+    raw <- textConnection(readLines(con))
+  } else {
+    raw <- textConnection(mreadLines(con))
+  }
+  close(con)
+  dat <- utils::read.csv(raw)
+  close(raw)
+  dat
+}
+
+#' Memoized readLines().
+#'
+#' @noRd
+
+mreadLines <- memoise::memoise(readLines)

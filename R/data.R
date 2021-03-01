@@ -20,8 +20,18 @@
 #'    \item{\code{ccode.ct}}{}
 #'    \item{\code{crosstab_2019_10_01}}{}
 #'    \item{\code{percentiles}}{}
+#'    \item{\code{top.n.oct2019}}{}
+#'    \item{\code{top.n.jul2020}}{}
+#'    \item{\code{download.country}}{}
+#'    \item{\code{october.downloads}}{}
+#'    \item{\code{july.downloads}}{}
+#'    \item{\code{cran.pkgs.oct}}{}
+#'    \item{\code{arch.pkgs.oct}}{}
+#'    \item{\code{cran.pkgs.jul}}{}
+#'    \item{\code{arch.pkgs.jul}}{}
+#'    \item{\code{pkg.history}}{}
 #' }
-#' @format A list with 19 elements.
+#' @format A list with 29 elements.
 #' @docType data
 "blog.data"
 
@@ -45,5 +55,15 @@
 # blog.data$ccode.ct <- ccode.ct
 # blog.data$crosstab_2019_10_01 <- crosstab_2019_10_01
 # blog.data$percentiles <- percentiles
+# blog.data$top.n.oct2019 <- top.n.oct2019
+# blog.data$top.n.jul2020 <- top.n.jul2020
+# blog.data$download.country <- download.country
+# blog.data$october.downloads <- downloads
+# blog.data$july.downloads <- downloads
+# blog.data$cran.pkgs.oct <- cran.pkgs
+# blog.data$arch.pkgs.oct <- arch.pkgs
+# blog.data$cran.pkgs.jul <- cran.pkgs
+# blog.data$arch.pkgs.jul <- arch.pkgs
+# blog.data$pkg.history <- pkg.history
 
-# usethis::use_data(blog.data, overwrite = TRUE)
+# usethis::use_data(blog.data, overwrite = TRUE, version = 3L)

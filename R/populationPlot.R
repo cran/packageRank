@@ -8,35 +8,33 @@
 #' @param sample.smooth Logical. Add smoother.
 #' @param f Numeric. stats::lowess() smoother window. For use with graphics = "base" only.
 #' @param sample.pct Numeric. Percent of packages to sample.
+#' @param population.seed Numeric. Seed for sample.
 #' @param multi.core Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores to use. Note that due to performance considerations, the number of cores defaults to one on Windows.
-#' @export
+#' @noRd
 
-populationPlot <- function(x, graphics = NULL, log.count = TRUE,
-  smooth = TRUE, sample.smooth = TRUE, f = 1/3, sample.pct = 5,
-  multi.core = TRUE) {
+populationPlot <- function(x, graphics = NULL, log.count = TRUE, smooth = TRUE,
+  sample.smooth = TRUE, f = 1/3, sample.pct = 2.5,
+  population.seed = as.numeric(Sys.Date()), multi.core = TRUE) {
 
   pkg.data <- x$cranlogs.data
   start.date <- pkg.data$date[1]
   end.date <- pkg.data$date[nrow(pkg.data)]
 
-  year <- as.POSIXlt(start.date)$year + 1900
-  rstudio.url <- "http://cran-logs.rstudio.com/"
-  url <- paste0(rstudio.url, year, '/', start.date, ".csv.gz")
-  cran_log <- mfetchLog(url)
+  cran_log <- fetchCranLog(start.date)
   init.pkgs <- unique(cran_log$package) # remove duplicated pkgs (diff versions)
   init.pkgs <- stats::na.omit(init.pkgs)
 
   pkgs <- cran_log[cran_log$package %in% init.pkgs, ]
-  crosstab <- table(pkgs$package)
+  freqtab <- table(pkgs$package)
   cores <- multiCore(multi.core)
 
-  rank.percentile <- parallel::mclapply(names(crosstab), function(nm) {
-    mean(crosstab < crosstab[nm])
+  rank.percentile <- parallel::mclapply(names(freqtab), function(nm) {
+    mean(freqtab < freqtab[nm])
   }, mc.cores = cores)
 
   rank.percentile <- unlist(rank.percentile)
 
-  pct <- data.frame(pkg = names(crosstab), percentile = rank.percentile,
+  pct <- data.frame(pkg = names(freqtab), percentile = rank.percentile,
     stringsAsFactors = FALSE)
   pct <- pct[order(pct$percentile, decreasing = TRUE), ]
   row.names(pct) <- NULL
@@ -50,7 +48,7 @@ populationPlot <- function(x, graphics = NULL, log.count = TRUE,
   })
 
   # set seed for random sampling
-  set.seed(as.numeric(Sys.Date()))
+  set.seed(population.seed)
   sample.id <- lapply(seq_along(bin.id), function(i) {
      sample(bin.id[[i]], round(sample.pct / 100 * length(bin.id[[i]])))
   })

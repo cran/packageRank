@@ -4,18 +4,37 @@
 \alias{countryPackage}
 \title{Tabulate a country's package downloads.}
 \usage{
-countryPackage(country = "US", date = Sys.Date() - 1, memoization = TRUE,
-  sort = TRUE)
+countryPackage(country = "HK", date = NULL, all.filters = FALSE,
+  ip.filter = FALSE, triplet.filter = FALSE, small.filter = FALSE,
+  sequence.filter = FALSE, size.filter = FALSE, sort = TRUE,
+  memoization = TRUE, multi.core = TRUE)
 }
 \arguments{
 \item{country}{Character. country abbreviation.}
 
-\item{date}{Character. Date. yyyy-mm-dd.}
+\item{date}{Character. Date. "yyyy-mm-dd". NULL uses latest available log.}
+
+\item{all.filters}{Logical. Master switch for filters.}
+
+\item{ip.filter}{Logical.}
+
+\item{triplet.filter}{Logical.}
+
+\item{small.filter}{Logical.}
+
+\item{sequence.filter}{Logical. Set to FALSE.}
+
+\item{size.filter}{Logical. Set to FALSE.}
+
+\item{sort}{Logical. Sort by download count.}
 
 \item{memoization}{Logical. Use memoization when downloading logs.}
 
-\item{sort}{Logical. Sort by download count.}
+\item{multi.core}{Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. Mac and Unix only.}
 }
 \description{
 From RStudio's CRAN Mirror http://cran-logs.rstudio.com/
+}
+\note{
+"US" outlier 10 min with all filters!
 }

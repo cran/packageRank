@@ -2,21 +2,25 @@
 % Please edit documentation in R/packageHistory.R
 \name{packageArchive}
 \alias{packageArchive}
-\title{Extract version history from Archive.}
+\title{Scrape package data from Archive.}
 \usage{
-packageArchive(package = "cholera")
+packageArchive(package = "cholera", check.package = TRUE, size = FALSE)
 }
 \arguments{
 \item{package}{Character. Package name.}
+
+\item{check.package}{Logical. Validate and "spell check" package.}
+
+\item{size}{Logical. Include size of source file.}
 }
 \value{
 An R data frame or NULL.
 }
 \description{
-Extract version history from Archive.
+Scrape package data from Archive.
 }
 \examples{
-\donttest{
+\dontrun{
 packageArchive(package = "HistData")
 packageArchive(package = "adjustedcranlogs")  # No archived versions.
 }

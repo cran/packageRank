@@ -4,22 +4,33 @@
 \alias{packageDistribution}
 \title{Package Download Distribution.}
 \usage{
-packageDistribution(package = "HistData", date = Sys.Date() - 1,
-  size.filter = FALSE, memoization = TRUE, check.package = TRUE,
-  dev.mode = FALSE)
+packageDistribution(package = "HistData", date = NULL,
+  all.filters = FALSE, ip.filter = FALSE, triplet.filter = FALSE,
+  small.filter = FALSE, sequence.filter = FALSE, size.filter = FALSE,
+  memoization = TRUE, check.package = TRUE, multi.core = TRUE)
 }
 \arguments{
 \item{package}{Character. Vector of package name(s).}
 
-\item{date}{Character. Date. "yyyy-mm-dd".}
+\item{date}{Character. Date. "yyyy-mm-dd".  NULL uses latest available log.}
 
-\item{size.filter}{Logical or Numeric. If Logical, TRUE filters out downloads less than 1000 bytes. If Numeric, a positive value sets the minimum download size (in bytes) to consider; a negative value sets the maximum download size to consider.}
+\item{all.filters}{Logical. Master switch for filters.}
+
+\item{ip.filter}{Logical.}
+
+\item{triplet.filter}{Logical.}
+
+\item{small.filter}{Logical. TRUE filters out downloads less than 1000 bytes.}
+
+\item{sequence.filter}{Logical.}
+
+\item{size.filter}{Logical.}
 
 \item{memoization}{Logical. Use memoization when downloading logs.}
 
 \item{check.package}{Logical. Validate and "spell check" package.}
 
-\item{dev.mode}{Logical. Use validatePackage0() to scrape CRAN.}
+\item{multi.core}{Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. Mac and Unix only.}
 }
 \description{
 Package Download Distribution.

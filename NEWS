@@ -1,3 +1,96 @@
+packageRank 0.4.0
+==================
+
+# New Features and Functionality #
+
+- filters shortcut via all.filters = TRUE argument.
+- temporarily set options(timeout = 300L) for fetchCranLog() for R 4.0.3.
+- time zone support via logDate().
+
+# Data Changes #
+
+- add pkg.history.
+- add arch.pkgs.jul, arch.pkgs.oct, cran.pkgs.jul and cran.pkgs.oct samples.
+- add october.downloads and july.downloads.
+- add top.n.jul2020.
+- rename blog.data$top.n to blog.data$top.n.oct2019.
+- use serialization format = 3 for blog.data object.
+
+# Fixes #
+
+ - amend majority rule syntax in timeFix().
+ - fix Mac directory changes in packageMRAN().
+ - fix typo in plot.countryDistribution().
+ - fix resolveDate() by first as.character() all dates.
+ - fix scrapeData() using strsplit(fixed = TRUE).
+ - pass 'f' argument, lowess() smoother span value, to rPlot().
+
+# Function Changes #
+
+- add add.legend argument to plot.cranFilterCounts().
+- add cumsum to cranDownloads() for cumulative counts and growth curves.
+- add dataset argument to plotTopCountryCodes().
+- add packageLog(clean.out = FALSE).
+- add population.seed argument to populationPlot().
+- add second.place argument to plotTopCountryCodes().
+- add subtitle argument to inflationPlot2().
+- add wed (Wednesday) argument to inflationPlot2().
+- change default orientation of ggplot2 facets in plot.cranDownalods().
+- note packageArchive() fix for 'testthat' filename typo/duplicate.
+- set geom_point(size = 1.5) for single day, multiple package plot in
+  singlePlot()
+- use alpha transparency in plot.packageRank() labels.
+- use "crandb_file_date" instead of "Date/Publication" in packageHistory().
+- use sugrrants::facet_calendar() with packageVersionPercent(),
+  plotTopCountryCodes(), and plotDownloadsCountry
+
+# New Functions #
+
+- countryDistribution()
+- cranMirrors()
+- cranPackages()
+- cranPackageSize()
+- downloadsCountry()
+- filteredDownloads()
+- ipCount()
+- ipDownloads()
+- ipPackage()
+- packageMRAN()
+- topCountryCodes()
+
+# New Filter Functions #
+
+- ipFilter()
+- sequenceFilter()
+- sizeFilter()
+- smallFilter()
+- tripletFilter()
+
+# New Helper Functions #
+
+- checkPackage()
+- cleanLog()
+- dateTime()
+- packageSample()
+- validatePackage()
+
+# New Time/Time Zone Functions #
+
+- currentTime()
+- utc()
+- utc0()
+- localTime()
+- logDate()
+- logPostInfo()
+
+# New/Amended Blog specific Functions
+- countsRanks()
+- cranPlot()
+- inflationPlot2()
+- monthlyLog()
+- packageVersionPercent()
+- versionsPlot()
+
 packageRank 0.3.5
 ==================
 
@@ -21,7 +114,7 @@ packageRank 0.3.5
 - fix "`geom_smooth()` using formula 'y ~ x'" warning for 'ggplot2' v3.3.0.
 
 
-# Function Change #
+# Function Changes #
 
 - enable arbitrary "to" argument without "from" in cranDownloads()
   e.g., cranDownloads(from = NULL, to = "2020-01-01").

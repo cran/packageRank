@@ -2,21 +2,25 @@
 % Please edit documentation in R/packageHistory.R
 \name{packageCRAN}
 \alias{packageCRAN}
-\title{Extract package version history from CRAN.}
+\title{Scrape package data from CRAN.}
 \usage{
-packageCRAN(package = "cholera")
+packageCRAN(package = "cholera", check.package = TRUE, size = FALSE)
 }
 \arguments{
 \item{package}{Character. Package name.}
+
+\item{check.package}{Logical. Validate and "spell check" package.}
+
+\item{size}{Logical. Include size of source file.}
 }
 \value{
 An R data frame or NULL.
 }
 \description{
-Date and version of most recent publication.
+Version, date and size (source file) of most recent publication.
 }
 \examples{
-\donttest{
+\dontrun{
 packageCRAN(package = "HistData")
 packageCRAN(package = "VR") # No version on CRAN (archived)
 }

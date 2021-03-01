@@ -4,14 +4,17 @@
 \alias{plot.cranDownloads}
 \title{Plot method for cranDownloads().}
 \usage{
-\method{plot}{cranDownloads}(x, graphics = "auto", points = "auto",
-  log.count = FALSE, smooth = FALSE, se = FALSE, f = 1/3,
-  package.version = FALSE, r.version = FALSE, population.plot = FALSE,
+\method{plot}{cranDownloads}(x, statistic = "count", graphics = "auto",
+  points = "auto", log.count = FALSE, smooth = FALSE, se = FALSE,
+  f = 1/3, package.version = FALSE, r.version = FALSE,
+  population.plot = FALSE, population.seed = as.numeric(Sys.Date()),
   multi.plot = FALSE, same.xy = TRUE, legend.loc = "topleft",
-  dev.mode = FALSE, ...)
+  r.total = FALSE, dev.mode = FALSE, ...)
 }
 \arguments{
 \item{x}{object.}
+
+\item{statistic}{Character. "count" or "cumulative".}
 
 \item{graphics}{Character. "auto", "base" or "ggplot2".}
 
@@ -31,11 +34,15 @@
 
 \item{population.plot}{Logical. Plot population plot.}
 
+\item{population.seed}{Numeric. Seed for sample in population plot.}
+
 \item{multi.plot}{Logical.}
 
 \item{same.xy}{Logical. Use same scale for multiple packages when graphics = "base".}
 
 \item{legend.loc}{Character.}
+
+\item{r.total}{Logical.}
 
 \item{dev.mode}{Logical. Use packageHistory0() to scrape CRAN.}
 
@@ -48,7 +55,7 @@ A base R or ggplot2 plot.
 Plot method for cranDownloads().
 }
 \examples{
-\donttest{
+\dontrun{
 plot(cranDownloads(packages = c("Rcpp", "rlang", "data.table")))
 plot(cranDownloads(packages = c("Rcpp", "rlang", "data.table"), when = "last-month"))
 plot(cranDownloads(packages = "R", from = "2020-01-01", to = "2020-01-01"))

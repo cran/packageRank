@@ -32,7 +32,7 @@ inflationPlot <- function(package = "cholera", filter = "size",
   lines(stats::lowess(oct, dat[, filter.id]), lty = "dotted")
   abline(v = oct[id], col = "gray", lty = "dotted")
   axis(3, at = oct[id], labels = rep("W", length(id)), cex.axis = 0.5,
-    col.ticks = "black")
+    col.ticks = "black", mgp = c(3, 0.5, 0))
 
   if (filter == "size") {
     title(main = paste0(package, ": Size"))
@@ -60,4 +60,75 @@ inflationPlot <- function(package = "cholera", filter = "size",
          cex = 2/3,
          lwd = 1,
          title = NULL)
+}
+
+#' Inflation plots of effects of "small" downloads on aggregate CRAN downloads for October 2019 and July 2020.
+#'
+#' Document code.
+#' @param dataset Character. "october" or "july" for October 2019 or July 2020.
+#' @param filter Character. "small", "ip", or "ip.small".
+#' @param wed Logical.
+#' @param subtitle Logical.
+#' @param legend.loc Character. Location of legend.
+#' @export
+
+inflationPlot2 <- function(dataset = "october", filter = "small", wed = FALSE,
+  subtitle = TRUE, legend.loc = "topleft") {
+
+  if (dataset == "october") dat <- packageRank::blog.data$october.downloads
+  else if (dataset == "july") dat <- packageRank::blog.data$july.downloads
+  else stop('"dataset" must be "october" or "july".')
+
+  vars <- names(dat) != "date"
+  tot <- colSums(dat[, vars])
+  unfiltered.ct <- tot["unfiltered"]
+  filtered.ct <- tot[filter]
+  inflation <- round(100 * (unfiltered.ct - filtered.ct) / filtered.ct, 1)
+
+  dat[, vars] <- dat[, vars] / 10^6
+
+  mo <- dat$date
+  id <- which(weekdays(mo, abbreviate = TRUE) == "Wed")
+
+  plot(dat$date, dat$unfiltered, type = "o", pch = 15, col = "red",
+    ylim = range(dat[, vars]), xlab = "Date", ylab = "Downloads (millions)")
+  lines(dat$date, dat[, filter], type = "o", pch = 16)
+  title(main = paste("Package Download Counts:", filter))
+
+  if (wed) {
+    abline(v = mo[id], col = "gray", lty = "dotted")
+    axis(3, at = mo[id], labels = rep("W", length(id)), cex.axis = 0.5,
+      col.ticks = "black", mgp = c(3, 0.5, 0))
+  }
+
+  legend(x = legend.loc, legend = c("unfiltered", "filtered"),
+    col = c("red", "black"), pch = c(15, 16), bg = "white", cex = 2/3, lwd = 1,
+    title = NULL)
+
+  if (subtitle) {
+    ptA <- paste0("unfiltered = ",
+                  format(round(unfiltered.ct, 2), big.mark = ","),
+                  "; filtered = ",
+                  format(round(filtered.ct, 2), big.mark = ","))
+    title(sub = paste0(ptA, "; inflation = ", paste0(inflation, "%")))
+  }  
+}
+
+#' CRAN Plot.
+#'
+#' Document code.
+#' @param dataset Character. "october" or "july" for October 2019 or July 2020.
+#' @export
+
+cranPlot <- function(dataset = "october") {
+  if (dataset == "october") dat <- packageRank::blog.data$october.downloads
+  else if (dataset == "july") dat <- packageRank::blog.data$july.downloads
+  else stop('"dataset" must be "october" or "july".')
+  vars <- names(dat) != "date"
+  dat[, vars] <- dat[, vars] / 10^6
+  mo <- dat$date
+  id <- which(weekdays(mo, abbreviate = TRUE) == "Wed")
+  plot(dat$date, dat$unfiltered, type = "o", pch = 16,
+    ylim = range(dat[, vars]), xlab = "Date", ylab = "Downloads (millions)")
+  title(main = "Package Downloads")
 }

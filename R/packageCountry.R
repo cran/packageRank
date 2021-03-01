@@ -2,44 +2,62 @@
 #'
 #' From RStudio's CRAN Mirror http://cran-logs.rstudio.com/
 #' @param packages Character. Vector of package name(s).
-#' @param date Character. Date. yyyy-mm-dd.
-#' @param memoization Logical. Use memoization when downloading logs.
+#' @param date Character. Date. "yyyy-mm-dd". NULL uses latest available log.
+#' @param all.filters Logical. Master switch for filters.
+#' @param ip.filter Logical.
+#' @param triplet.filter Logical.
+#' @param small.filter Logical.
+#' @param sequence.filter Logical.
+#' @param size.filter Logical.
 #' @param sort Logical. Sort by download count.
 #' @param na.rm Logical. Remove NAs.
+#' @param memoization Logical. Use memoization when downloading logs.
+#' @param check.package Logical. Validate and "spell check" package.
 #' @export
 
-packageCountry <- function(packages = NULL, date = Sys.Date() - 1,
-  memoization = TRUE, sort = TRUE, na.rm = FALSE) {
+packageCountry <- function(packages = "cholera", date = NULL,
+  all.filters = FALSE, ip.filter = FALSE, triplet.filter = FALSE,
+  small.filter = FALSE, sequence.filter = FALSE, size.filter = FALSE,
+  sort = TRUE, na.rm = FALSE, memoization = TRUE, check.package = TRUE) {
 
-  dat <- packageLog(packages = packages, date = date, memoization = memoization)
+  ymd <- logDate(date, warning.msg = FALSE)
 
-  if (length(packages) == 1) {
-    if (na.rm) {
-      out <- table(dat$country)
-    } else {
-      out <- table(dat$country, useNA = "ifany")
-    }
-    if (sort) {
-      out <- sort(out, decreasing = TRUE)
-    } else {
-      out
-    }
-  } else if (length(packages) > 1) {
-    if (na.rm) {
-      out <- lapply(packages, function(pkg) {
-         table(dat[dat$package == pkg, "country"])
-      })
-    } else {
-      out <- lapply(packages, function(pkg) {
-         table(dat[dat$package == pkg, "country"], useNA = "ifany")
-      })
-    }
-    if (sort) {
-      out <- lapply(out, function(x) sort(x, decreasing = TRUE))
-    } else {
-      out
-    }
-    names(out) <- packages
+  if (all.filters) {
+    ip.filter <- TRUE
+    triplet.filter <- TRUE
+    small.filter <- TRUE
+    sequence.filter <- TRUE
+    size.filter <- TRUE
   }
+
+  p.log <- packageLog(packages = packages, date = ymd,
+    ip.filter = ip.filter, triplet.filter = triplet.filter,
+    small.filter = small.filter, sequence.filter = sequence.filter,
+    size.filter = size.filter, memoization = memoization,
+    check.package = check.package)
+
+  if (na.rm) {
+    if (is.data.frame(p.log)) {
+      out <- table(p.log$country)
+    } else if (is.list(p.log)) {
+      out <- lapply(p.log, function(x) table(x$country))
+    }
+  } else {
+    if (is.data.frame(p.log)) {
+      out <- table(p.log$country, useNA = "ifany")
+    } else if (is.list(p.log)) {
+      out <- lapply(p.log, function(x) table(x$country, useNA = "ifany"))
+    }
+  }
+
+  if (sort) {
+    if (is.table(out)) {
+      out <- sort(out, decreasing = TRUE)
+    } else if (is.list(out)) {
+      out <- lapply(out, function(x) sort(x, decreasing = TRUE))
+      names(out) <- packages
+    }
+  }
+
   out
 }
