@@ -1,3 +1,26 @@
+packageRank 0.4.1
+==================
+
+# Function Changes #
+
+- logDate(): check download log URL before computing available_log() for
+  logs available before 17:00 UTC.
+- change facet_wrap(~ package, ncol = 2) to facet_wrap(~ package, nrow = 2).
+- use logDate() in logPostInfo().
+- enable log.count argument for plot.cranDownloads(r.total = TRUE and FALSE).
+- enable multi.plot argument for rPlot(graphics = "ggplot2").
+- add geom_smooth(span = 3/4).
+
+# Fixes #
+
+- sizeFilter() and cranPackageSize(): fix multiple versions with package
+  updates.
+
+# New Research Functions #
+
+- annualDownloads() and weeklyDownloads().
+
+
 packageRank 0.4.0
 ==================
 
