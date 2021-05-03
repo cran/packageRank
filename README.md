@@ -1,7 +1,6 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
-[![CRAN\_Status\_Badge](http://www.r-pkg.org/badges/version/packageRank)](https://cran.r-project.org/package=packageRank)
-[![GitHub\_Status\_Badge](https://img.shields.io/badge/GitHub-0.4.1-red.svg)](https://github.com/lindbrook/packageRank/blob/master/NEWS)
+
 ## packageRank: compute and visualize package download counts and rank percentiles
 
 [‘packageRank’](https://CRAN.R-project.org/package=packageRank) is an R
@@ -36,9 +35,8 @@ issues.
 an active internet connection, and relies on the
 [‘cranlogs’](https://CRAN.R-project.org/package=cranlogs) package and
 [RStudio’s download logs](http://cran-logs.rstudio.com/). The latter
-record traffic to the [“0-Cloud” mirror](https://cloud.R-project.org),
-which is “currently sponsored by RStudio” and was previously RStudio’s
-CRAN mirror.
+records traffic to the “0-Cloud” mirror at cloud.R-project.org, which is
+“currently sponsored by RStudio” and was formerly RStudio’s CRAN mirror.
 
 Note that logs for the previous day are generally posted by 17:00 UTC.
 Updated results for functions that rely on
@@ -599,7 +597,8 @@ packageHistory(package = "cholera")
 > 5 cholera   0.5.1 2018-08-15    Archive
 > 6 cholera   0.6.0 2019-03-08    Archive
 > 7 cholera   0.6.5 2019-06-11    Archive
-> 8 cholera   0.7.0 2019-08-28       CRAN
+> 8 cholera   0.7.0 2019-08-28    Archive
+> 9 cholera   0.7.5 2021-04-22       CRAN
 ```
 
 While there are legitimate reasons for downloading past versions (e.g.,
@@ -628,7 +627,7 @@ To get an idea of how inflated your package’s download count may be, use
 ``` r
 filteredDownloads(package = "cholera", date = "2020-07-31")
 >         date package downloads filtered.downloads inflation
-> 1 2020-07-31 cholera        14                  5       180
+> 1 2020-07-31 cholera        14                 12     16.67
 ```
 
 While there were 14 nominal downloads, applying all the filters reduced
