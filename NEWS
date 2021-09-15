@@ -1,3 +1,16 @@
+packageRank 0.5.0
+==================
+
+# Fixes #
+
+- increase fetchCranLog() timeout to 600.
+
+# Function Changes #
+
+- visualize different units of observation: "day" (default), "month", and "year" with plot.cranDownloads(unit.observation = "day").
+- add in-progress plots with nominal and estimated totals for aggregate units of observation.
+
+
 packageRank 0.4.2
 ==================
 

@@ -42,6 +42,9 @@ cranDownloads <- function(packages = NULL, when = NULL, from = NULL,
       if (check.package) {
         packages <- checkPackage(packages, dev.mode)
       }
+      first.published <- do.call(c, lapply(packages, function(pkg) {
+        packageHistory(pkg)[1, "Date"]
+      }))
     }
   }
 
@@ -53,28 +56,26 @@ cranDownloads <- function(packages = NULL, when = NULL, from = NULL,
   } else if (!is.null(when) & is.null(from) & is.null(to)) {
     if (when %in% c("last-day", "last-week", "last-month")) {
       args <- list(packages = packages, when = when)
-    } else stop('"when" must be "last-day", "last-week" or "last-month".',
-      call. = FALSE)
+    } else {
+      stop('"when" must be "last-day", "last-week" or "last-month".',
+        call. = FALSE)
+      }
 
   } else if (is.null(when) & !is.null(from)) {
     start.date <- resolveDate(from, type = "from")
 
-    if (!is.null(to)) {
-      end.date <- resolveDate(to, type = "to")
-    } else end.date <- cal.date
+    if (!is.null(to)) end.date <- resolveDate(to, type = "to")
+    else end.date <- cal.date
 
     if (start.date > end.date) stop('"from" must be <= "to".', call. = FALSE)
+
     args <- list(packages = packages, from = start.date, to = end.date)
 
   } else if (is.null(when) & !is.null(to)) {
     end.date <- resolveDate(to, type = "to")
 
-    first.published <- lapply(packages, function(pkg) {
-      packageHistory(pkg)[1, "Date"]
-    })
-
     to.data <- lapply(seq_along(packages), function(i) {
-      cranlogs::cran_downloads(packages[i], from = first.published[[i]],
+      cranlogs::cran_downloads(packages[i], from = first.published[i],
         to = end.date)
     })
   }
@@ -115,9 +116,15 @@ cranDownloads <- function(packages = NULL, when = NULL, from = NULL,
       cranlogs.data$package)
     names(cranlogs.data)[ncol(cranlogs.data)] <- "package"
 
-    id <- which.min(unlist(first.published))
+    id <- which.min(first.published)
     out <- list(packages = packages, cranlogs.data = cranlogs.data,
-      when = NULL, from = first.published[[id]], to = end.date)
+      when = NULL, from = first.published[id], to = end.date)
+  }
+
+  if (!is.null(packages)) {
+    if (all(packages != "R")) {
+      out$cranlogs.data <- packageLifeFilter(out, packages, first.published)
+    }
   }
 
   class(out) <- "cranDownloads"
@@ -144,6 +151,8 @@ cranDownloads <- function(packages = NULL, when = NULL, from = NULL,
 #' @param legend.loc Character.
 #' @param r.total Logical.
 #' @param dev.mode Logical. Use packageHistory0() to scrape CRAN.
+#' @param unit.observation Character. "year", "month", or "day".
+#' @param multi.core Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. Mac and Unix only.
 #' @param ... Additional plotting parameters.
 #' @return A base R or ggplot2 plot.
 #' @export
@@ -160,7 +169,9 @@ plot.cranDownloads <- function(x, statistic = "count", graphics = "auto",
   span = 3/4, package.version = FALSE, r.version = FALSE,
   population.plot = FALSE, population.seed = as.numeric(Sys.Date()),
   multi.plot = FALSE, same.xy = TRUE, legend.loc = "topleft", r.total = FALSE,
-  dev.mode = FALSE, ...) {
+  dev.mode = FALSE, unit.observation = "day", multi.core = TRUE, ...) {
+
+  cores <- multiCore(multi.core)
 
   if (graphics == "auto") {
     if (is.null(x$packages)) {
@@ -187,12 +198,19 @@ plot.cranDownloads <- function(x, statistic = "count", graphics = "auto",
   if (statistic %in% c("count", "cumulative") == FALSE) {
     stop('"statistic" must be "count" or "cumulative".', call. = FALSE)
   }
+  if (!graphics %in% c("base", "ggplot2")) {
+    stop('graphics must be "base" or "ggplot2"', call. = FALSE)
+  }
 
-  dat <- x$cranlogs.data
-  days.observed <- unique(dat$date)
+  if (unit.observation %in% c("month", "year")) {
+    x$last.obs.date <- x$cranlogs.data[nrow(x$cranlogs.data), "date"]
+    x$cranlogs.data <- aggregateData(unit.observation, x$cranlogs.data, cores)
+  }
+
+  obs.ct <- length(unique(x$cranlogs.data$date))
 
   if (points == "auto") {
-    if (length(days.observed) <= 45) points <- TRUE else points <- FALSE
+    if (obs.ct <= 45) points <- TRUE else points <- FALSE
   } else if (is.logical(points) == FALSE) {
     stop('points must be "auto", TRUE, or FALSE.', call. = FALSE)
   }
@@ -205,15 +223,18 @@ plot.cranDownloads <- function(x, statistic = "count", graphics = "auto",
       rTotPlot(x, statistic, graphics, legend.loc, points, log.count, smooth,
         se, r.version, f, span)
     } else {
-      rPlot(x, statistic, graphics, legend.loc, points, log.count, smooth, se,
-        r.version, f, span, multi.plot)
+      rPlot(x, statistic, graphics, obs.ct, legend.loc, points, log.count,
+        smooth, se, r.version, f, span, multi.plot)
     }
+  } else if (is.null(x$packages)) {
+    cranPlot(x, statistic, graphics, points, log.count, smooth, se, f, span,
+      r.version)
   } else {
     if (multi.plot) {
-      multiPlot(x, statistic, graphics, days.observed, log.count, legend.loc,
+      multiPlot(x, statistic, graphics, obs.ct, log.count, legend.loc,
         points, smooth, se, f, span)
     } else {
-      singlePlot(x, statistic, graphics, days.observed, points, smooth, se, f,
+      singlePlot(x, statistic, graphics, obs.ct, points, smooth, se, f,
         span, log.count, package.version, dev.mode, r.version, same.xy)
     }
   }
@@ -236,591 +257,4 @@ print.cranDownloads <- function(x, ...) {
 
 summary.cranDownloads <- function(object, ...) {
   object$cranlogs.data
-}
-
-rPlot <- function(x, statistic, graphics, legend.loc, points, log.count,
-  smooth, se, r.version, f, span, multi.plot) {
-
-  dat <- x$cranlogs.data
-
-  if (statistic == "count") {
-    ylab <- "Count"
-  } else if (statistic == "cumulative") {
-    ylab <- "Cumulative"
-  }
-
-  if (graphics == "base") {
-    if (points) {
-      if (log.count) {
-        plot(dat[dat$platform == "win", "date"],
-             dat[dat$platform == "win", statistic],
-             type = "o", ylim = range(dat[, statistic]),
-             xlab = "Date", ylab = paste("log10", ylab), log = "y")
-      } else {
-        plot(dat[dat$platform == "win", "date"],
-             dat[dat$platform == "win", statistic],
-             type = "o", ylim = range(dat[, statistic]),
-             xlab = "Date", ylab = ylab)
-      }
-      lines(dat[dat$platform == "osx", "date"],
-            dat[dat$platform == "osx", statistic],
-            type = "o", pch = 0, col = "red")
-      lines(dat[dat$platform == "src", "date"],
-            dat[dat$platform == "src", statistic],
-            type = "o", pch = 2, col = "blue")
-    } else {
-      if (log.count) {
-        plot(dat[dat$platform == "win", "date"],
-             dat[dat$platform == "win", statistic],
-             type = "l", ylim = range(dat[, statistic]),
-             xlab = "Date", ylab = paste("log10", ylab), log = "y")
-      } else {
-        plot(dat[dat$platform == "win", "date"],
-             dat[dat$platform == "win", statistic],
-             type = "l", ylim = range(dat[, statistic]),
-             xlab = "Date", ylab = ylab)
-      }
-      lines(dat[dat$platform == "osx", "date"],
-            dat[dat$platform == "osx", statistic],
-            col = "red")
-      lines(dat[dat$platform == "src", "date"],
-            dat[dat$platform == "src", statistic],
-            col = "blue")
-    }
-
-    legend(x = legend.loc,
-           legend = c("win", "mac", "src"),
-           col = c("black", "red", "blue"),
-           pch = c(1, 0, 2),
-           bg = "white",
-           cex = 2/3,
-           title = "Platform",
-           lwd = 1)
-
-    if (smooth) {
-      lines(stats::lowess(dat[dat$platform == "win", "date"],
-                          dat[dat$platform == "win", statistic], f = f),
-                          lty = "dashed")
-      lines(stats::lowess(dat[dat$platform == "osx", "date"],
-                          dat[dat$platform == "osx", statistic], f = f),
-                          lty = "dashed", col = "red")
-      lines(stats::lowess(dat[dat$platform == "src", "date"],
-                          dat[dat$platform == "src", statistic], f = f),
-                          lty = "dashed", col = "blue")
-    }
-
-    if (r.version) {
-      r_v <- rversions::r_versions()
-      axis(3, at = as.Date(r_v$date), labels = paste("R", r_v$version),
-        cex.axis = 2/3, padj = 0.9)
-      abline(v = as.Date(r_v$date), lty = "dotted")
-    }
-
-    title(main = "R Downloads")
-
-  } else if (graphics == "ggplot2") {
-    if (statistic == "count") {
-      dat2 <- dat[, c("date", "count", "platform")]
-      if (multi.plot) {
-        p <- ggplot(data = dat2, aes_string("date", "count",
-          colour = "platform"))
-      } else {
-        p <- ggplot(data = dat2, aes_string("date", "count")) +
-          facet_wrap(~ platform, nrow = 2)
-      }
-    } else {
-      dat2 <- dat[, c("date", "cumulative", "platform")]
-      if (multi.plot) {
-        p <- ggplot(data = dat2, aes_string("date", "cumulative",
-          colour = "platform"))
-      } else {
-        p <- ggplot(data = dat2, aes_string("date", "cumulative")) +
-          facet_wrap(~ platform, nrow = 2)
-      }
-    }
-
-    p <- p + geom_line(size = 0.5) +
-      theme_bw() +
-      theme(panel.grid.minor = element_blank(),
-            plot.title = element_text(hjust = 0.5)) +
-      ggtitle("R Downloads")
-
-    if (points) p <- p + geom_point()
-    if (log.count) p <- p + scale_y_log10() + ylab("log10 Count")
-    if (!multi.plot) p <- p + facet_wrap(~ platform, nrow = 2)
-    if (smooth) {
-      p <- p + geom_smooth(method = "loess", formula = "y ~ x", se = se,
-        span = span)
-    }
-
-    p
-  } else {
-    stop('graphics must be "base" or "ggplot2"', call. = FALSE)
-  }
-}
-
-rTotPlot <- function(x, statistic, graphics, legend.loc, points, log.count,
-  smooth, se, r.version, f, span) {
-
-  dat <- x$cranlogs.data
-  if (statistic == "count") ylab <- "Count"
-  if (statistic == "cumulative") ylab <- "Cumulative"
-  ct <- tapply(dat$count, dat$date, sum)
-  cs <- cumsum(ct)
-  dat2 <- data.frame(date = as.Date(names(ct)), count = ct, cumulative = cs,
-    row.names = NULL)
-
-  if (graphics == "base") {
-    if (points) {
-      if (log.count) {
-        plot(dat2$date, dat2[, statistic], type = "o", xlab = "Date",
-          ylab = ylab, log = "y")
-      } else {
-        plot(dat2$date, dat2[, statistic], type = "o", xlab = "Date",
-          ylab = ylab)
-      }
-    } else {
-      if (log.count) {
-        plot(dat2$date, dat2[, statistic], type = "l", xlab = "Date",
-          ylab = ylab, log = "y")
-      } else {
-        plot(dat2$date, dat2[, statistic], type = "l", xlab = "Date",
-          ylab = ylab)
-      }
-    }
-
-    if (smooth) {
-      lines(stats::lowess(dat2$date, dat2[, statistic], f), col = "blue",
-        lwd = 1.25)
-    }
-
-    if (r.version) {
-      r_v <- rversions::r_versions()
-      axis(3, at = as.Date(r_v$date), labels = paste("R", r_v$version),
-        cex.axis = 2/3, padj = 0.9)
-      abline(v = as.Date(r_v$date), lty = "dotted")
-    }
-
-    title(main = "Total R Downloads")
-
-  } else if (graphics == "ggplot2") {
-    if (statistic == "count") {
-      p <- ggplot(data = dat2, aes_string("date", "count"))
-    } else if (statistic == "cumulative") {
-      p <- ggplot(data = dat2, aes_string("date", "cumulative"))
-    }
-
-    p <- p + geom_line(size = 0.5) +
-      theme_bw() +
-      theme(panel.grid.minor = element_blank(),
-            plot.title = element_text(hjust = 0.5)) +
-      ggtitle("Total R Downloads")
-
-    if (points) p <- p + geom_point()
-    if (log.count) p <- p + scale_y_log10() + ylab("log10 Count")
-    if (smooth) {
-      p <- p + geom_smooth(method = "loess", formula = "y ~ x", se = se,
-        span = span)
-    }
-
-    p
-  } else {
-    stop('graphics must be "base" or "ggplot2"', call. = FALSE)
-  }
-}
-
-multiPlot <- function(x, statistic, graphics, days.observed, log.count,
-  legend.loc, points, smooth, se, f, span) {
-
-  dat <- x$cranlogs.data
-
-  if (statistic == "count") {
-    ttl <- "Package Download Counts"
-  } else if (statistic == "cumulative") {
-    ttl <- "Cumulative Package Downloads"
-  }
-
-  if (graphics == "base") {
-    if (length(days.observed) == 1) {
-      if (log.count) {
-        dotchart(log10(dat$count), labels = dat$package,
-          xlab = "log10 Count", main = days.observed)
-      } else {
-        dotchart(dat$count, labels = dat$package, xlab = "Count",
-          main = days.observed)
-      }
-    } else if (length(days.observed) > 1) {
-      if (length(x$packages) > 8) {
-        stop('Use <= 8 packages when graphics = "base".', call. = FALSE)
-      } else {
-        if (log.count) {
-          if (points) {
-            plot(dat[dat$package == x$packages[1], c("date", statistic)],
-              ylim = range(dat[, statistic]), type = "o", log = "y", main = ttl)
-          } else {
-            plot(dat[dat$package == x$packages[1], c("date", statistic)],
-              ylim = range(dat[, statistic]), type = "l", log = "y", main = ttl)
-          }
-        } else {
-          if (points) {
-            plot(dat[dat$package == x$packages[1], c("date", statistic)],
-              ylim = range(dat[, statistic]), type = "o", main = ttl)
-          } else {
-            plot(dat[dat$package == x$packages[1], c("date", statistic)],
-              ylim = range(dat[, statistic]), type = "l", main = ttl)
-          }
-        }
-
-        # http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
-        # http://jfly.iam.u-tokyo.ac.jp/color/
-        # The palette with grey:
-        # cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
-        #   "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
-        cbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73",
-          "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
-        token <- c(0, 2:7)
-        invisible(lapply(seq_along(x$packages)[-1], function(i) {
-          lines(dat[dat$package == x$packages[i], c("date", statistic)],
-            type = "o", col = cbPalette[i], pch = token[i])
-        }))
-
-        if (smooth) {
-          invisible(lapply(seq_along(x$packages), function(i) {
-            vars <- c("date", statistic)
-            lines(stats::lowess(dat[dat$package == x$packages[i], vars], f = f),
-              col = cbPalette[i])
-          }))
-        }
-
-        id <- seq_along(x$packages)
-        legend(x = legend.loc,
-               legend = x$packages,
-               col = cbPalette[id],
-               pch = c(1, token[id]),
-               bg = "white",
-               cex = 2/3,
-               title = NULL,
-               lwd = 1)
-      }
-    }
-
-  } else if (graphics == "ggplot2") {
-    if (length(days.observed) == 1) {
-      p <- ggplot(data = dat, aes_string("count", y = "package",
-                  colour = "package"))
-      if (log.count) {
-        # p + scale_x_log10() + xlab("log10(count)") doesn't work!
-        dat2 <- dat
-        dat2$count <- log10(dat2$count)
-        p <- ggplot(data = dat2, aes_string("count", "package",
-                    colour = "package")) +
-             xlab("log10 Count")
-      }
-
-      p <- p + geom_hline(yintercept = c(1, 2), linetype = "dotted") +
-        theme(panel.grid.minor = element_blank())
-
-    } else if (length(days.observed) > 1) {
-      if (statistic == "count") {
-        p <- ggplot(data = dat, aes_string("date", "count",
-          colour = "package")) + ggtitle("Package Download Counts")
-      } else if (statistic == "cumulative") {
-        p <- ggplot(data = dat, aes_string("date", "cumulative",
-          colour = "package")) + ggtitle("Cumulative Package Downloads")
-      }
-
-      p <- p + geom_line() +
-        theme(panel.grid.minor = element_blank(),
-              plot.title = element_text(hjust = 0.5))
-    }
-
-    if (points) p <- p + geom_point()
-    if (log.count) p <- p + scale_y_log10()
-    if (smooth) {
-      p <- p + geom_smooth(method = "loess", formula = "y ~ x", se = se,
-        span = span)
-    }
-
-    p
-  }
-}
-
-cranDownloadsPlot <- function(x, statistic, graphics, points, log.count,
-  smooth, se, f, span, r.version) {
-
-  dat <- x$cranlogs.data
-
-  if (statistic == "count") {
-    y.nm.case <- "Count"
-    y.nm <- tolower(y.nm.case)
-  } else if (statistic == "cumulative") {
-    y.nm.case <- "Cumulative"
-    y.nm <- tolower(y.nm.case)
-  }
-
-  if (graphics == "base") {
-    if (log.count) {
-      if (points) {
-        plot(dat$date, dat[, y.nm], type = "o", xlab = "Date",
-          ylab = paste0("log10 ", y.nm.case), log = "y")
-      } else {
-        plot(dat$date, dat[, y.nm], type = "l", xlab = "Date",
-          ylab = paste0("log10 ", y.nm.case), log = "y")
-      }
-    } else {
-      if (points) {
-        plot(dat$date, dat[, y.nm], type = "o", xlab = "Date", ylab = y.nm.case)
-      } else {
-        plot(dat$date, dat[, y.nm], type = "l", xlab = "Date", ylab = y.nm.case)
-      }
-    }
-
-    if (r.version) {
-      r_v <- rversions::r_versions()
-      axis(3, at = as.Date(r_v$date), labels = paste("R", r_v$version),
-        cex.axis = 2/3, padj = 0.9)
-      abline(v = as.Date(r_v$date), lty = "dotted")
-    }
-
-    if (smooth) {
-      lines(stats::lowess(dat$date, dat[, y.nm], f = f),
-        col = "blue")
-    }
-
-    title(main = "Total Package Downloads")
-
-  } else if (graphics == "ggplot2") {
-    if (statistic == "count") {
-      p <- ggplot(data = dat, aes_string("date", "count"))
-    } else if (statistic == "cumulative") {
-      p <- ggplot(data = dat, aes_string("date", "cumulative"))
-    }
-
-    p <- p + geom_line(size = 0.5) +
-      theme_bw() +
-      ggtitle("Total Package Downloads") +
-      theme(plot.title = element_text(hjust = 0.5))
-
-    if (points) p <- p + geom_point()
-    if (log.count) p <- p + scale_y_log10()
-    if (smooth) {
-      p <- p + geom_smooth(method = "loess", formula = "y ~ x", se = se,
-        span = span)
-    }
-
-    p
-  } else stop('graphics must be "base" or "ggplot2".', call. = FALSE)
-}
-
-singlePlot <- function(x, statistic, graphics, days.observed, points, smooth,
-  se, f, span, log.count, package.version, dev.mode, r.version, same.xy) {
-
-  dat <- x$cranlogs.data
-
-  if (statistic == "count") {
-    y.var <- dat$count
-    y.nm.case <- "Count"
-    y.nm <- tolower(y.nm.case)
-  } else if (statistic == "cumulative") {
-    y.var <- dat$cumulative
-    y.nm.case <- "Cumulative"
-    y.nm <- tolower(y.nm.case)
-  }
-
-  if (graphics == "base") {
-    if (is.null(x$packages)) {
-      cranDownloadsPlot(x, statistic, graphics, points, log.count, smooth, se,
-        f, span, r.version)
-
-    } else if (length(x$packages) > 1) {
-      if (length(days.observed) == 1) {
-        if (log.count) {
-          dotchart(log10(dat$count), labels = dat$package,
-            xlab = "log10 Count", main = days.observed)
-        } else {
-          dotchart(dat$count, labels = dat$package, xlab = "Count",
-            main = days.observed)
-        }
-      } else if (length(days.observed) > 1) {
-
-        if (same.xy) {
-          xlim <- range(dat$date)
-          ylim <- range(y.var)
-          grDevices::devAskNewPage(ask = TRUE)
-
-          invisible(lapply(x$package, function(pkg) {
-            pkg.dat <- dat[dat$package == pkg, ]
-            if (log.count) {
-              if (points) {
-                plot(pkg.dat$date, pkg.dat[, y.nm], type = "o", xlab = "Date",
-                  ylab = paste0("log10 ", y.nm.case), log = "y",
-                  xlim = xlim, ylim = ylim)
-              } else {
-                plot(pkg.dat$date, pkg.dat[, y.nm], type = "l", xlab = "Date",
-                  ylab = paste0("log10 ", y.nm.case), log = "y",
-                  xlim = xlim, ylim = ylim)
-              }
-            } else {
-              if (points) {
-                plot(pkg.dat$date, pkg.dat[, y.nm], type = "o", xlab = "Date",
-                  ylab = y.nm.case, xlim = xlim, ylim = ylim)
-              } else {
-                plot(pkg.dat$date, pkg.dat[, y.nm], type = "l", xlab = "Date",
-                  ylab = y.nm.case, xlim = xlim, ylim = ylim)
-              }
-            }
-
-            if (package.version) {
-              if (dev.mode) p_v <- packageHistory0(pkg)
-              else p_v <- packageHistory(pkg)
-              axis(3, at = p_v$Date, labels = p_v$Version, cex.axis = 2/3,
-                padj = 0.9, col.axis = "red", col.ticks = "red")
-              abline(v = p_v$Date, lty = "dotted", col = "red")
-            }
-
-            if (r.version) {
-              r_v <- rversions::r_versions()
-              axis(3, at = as.Date(r_v$date),
-                labels = paste("R", r_v$version), cex.axis = 2/3, padj = 0.9)
-              abline(v = as.Date(r_v$date), lty = "dotted")
-            }
-
-            if (smooth) {
-              lines(stats::lowess(pkg.dat$date, pkg.dat[, y.nm], f = f),
-                col = "blue")
-            }
-            title(main = pkg)
-          }))
-          grDevices::devAskNewPage(ask = FALSE)
-
-        } else {
-          grDevices::devAskNewPage(ask = TRUE)
-          invisible(lapply(x$package, function(pkg) {
-            pkg.dat <- dat[dat$package == pkg, ]
-            if (log.count) {
-              if (points) {
-                plot(pkg.dat$date, pkg.dat[, y.nm], type = "o", xlab = "Date",
-                  ylab = paste0("log10 ", y.nm.case), log = "y")
-              } else {
-                plot(pkg.dat$date, pkg.dat[, y.nm], type = "l", xlab = "Date",
-                  ylab = paste0("log10 ", y.nm.case), log = "y")
-              }
-            } else {
-              if (points) {
-                plot(pkg.dat$date, pkg.dat[, y.nm], type = "o", xlab = "Date",
-                  ylab = y.nm.case)
-              } else {
-                plot(pkg.dat$date, pkg.dat[, y.nm], type = "l", xlab = "Date",
-                  ylab = y.nm.case)
-              }
-            }
-
-            if (package.version) {
-              if (dev.mode) p_v <- packageHistory0(pkg)
-              else p_v <- packageHistory(pkg)
-              axis(3, at = p_v$Date, labels = p_v$Version, cex.axis = 2/3,
-                padj = 0.9, col.axis = "red", col.ticks = "red")
-              abline(v = p_v$Date, lty = "dotted", col = "red")
-            }
-
-            if (r.version) {
-              r_v <- rversions::r_versions()
-              axis(3, at = as.Date(r_v$date),
-                labels = paste("R", r_v$version), cex.axis = 2/3, padj = 0.9)
-              abline(v = as.Date(r_v$date), lty = "dotted")
-            }
-
-            if (smooth) {
-              lines(stats::lowess(pkg.dat$date, pkg.dat[, y.nm], f = f),
-                col = "blue")
-            }
-            title(main = pkg)
-          }))
-          grDevices::devAskNewPage(ask = FALSE)
-        }
-      }
-
-    } else if (length(x$packages) == 1) {
-      if (log.count) {
-        if (points) {
-          plot(dat$date, dat[, y.nm], type = "o", xlab = "Date",
-            ylab = paste0("log10 ", y.nm.case), log = "y")
-        } else {
-          plot(dat$date, dat[, y.nm], type = "l", xlab = "Date",
-            ylab = paste0("log10 ", y.nm.case), log = "y")
-        }
-      } else {
-        if (points) {
-          plot(dat$date, dat[, y.nm], type = "o", xlab = "Date",
-            ylab = y.nm.case)
-        } else {
-          plot(dat$date, dat[, y.nm], type = "l", xlab = "Date",
-            ylab = y.nm.case)
-        }
-      }
-
-      if (package.version) {
-        if (dev.mode) p_v <- packageHistory0(x$packages)
-        else p_v <- packageHistory(x$packages)
-        axis(3, at = p_v$Date, labels = p_v$Version, cex.axis = 2/3,
-          padj = 0.9, col.axis = "red", col.ticks = "red")
-        abline(v = p_v$Date, lty = "dotted", col = "red")
-      }
-
-      if (r.version) {
-        r_v <- rversions::r_versions()
-        axis(3, at = as.Date(r_v$date), labels = paste("R", r_v$version),
-          cex.axis = 2/3, padj = 0.9)
-        abline(v = as.Date(r_v$date), lty = "dotted")
-      }
-
-      if (smooth) {
-        lines(stats::lowess(dat$date, dat[, y.nm], f = f), col = "blue")
-      }
-
-      title(main = x$packages)
-    }
-
-  } else if (graphics == "ggplot2") {
-    if (is.null(x$packages)) {
-      p <- cranDownloadsPlot(x, statistic, graphics, points, log.count, smooth,
-        se, f)
-    } else {
-      if (length(days.observed) == 1) {
-        p <- ggplot(data = dat) +
-             theme_bw() +
-             theme(panel.grid.major.x = element_blank(),
-                   panel.grid.minor = element_blank()) +
-             facet_wrap(~ date, nrow = 2)
-
-        if (statistic == "count") {
-          p <- p + geom_point(aes_string("count", "package"), size = 1.5)
-        } else if (statistic == "cumulative") {
-          p <- p + geom_point(aes_string("cumulative", "package"), size = 1.5)
-        }
-
-        if (log.count) p <- p + scale_x_log10() + xlab("log10 Count")
-
-      } else if (length(days.observed) > 1) {
-        if (statistic == "count") {
-          p <- ggplot(data = dat, aes_string("date", "count"))
-        } else if (statistic == "cumulative") {
-          p <- ggplot(data = dat, aes_string("date", "cumulative"))
-        }
-
-        p <- p + geom_line(size = 0.5) +
-          facet_wrap(~ package, nrow = 2) +
-          theme_bw() +
-          theme(panel.grid.minor = element_blank())
-
-        if (points) p <- p + geom_point()
-        if (log.count) p <- p + scale_y_log10()
-        if (smooth) {
-            p <- p + geom_smooth(method = "loess", formula = "y ~ x", se = se,
-              span = span)
-        }
-      }
-      p
-    }
-  }
 }

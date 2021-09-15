@@ -5,41 +5,44 @@
 
 [‘packageRank’](https://CRAN.R-project.org/package=packageRank) is an R
 package that helps put package download counts into context. It does so
-via two functions, `cranDownloads()` and `packageRank()`, and one set of
-filters that remove “invalid” entries from the download logs. I cover
-these topics in three parts. A fourth part covers package related
+via two functions, `cranDownloads()` and `packageRank()` (analogous but
+more limited functionality for Bioconductor packages is available via
+`bioconductorDownloads()` and `bioconductorRank()`), and a set of
+filters that removes “invalid” entries from the download logs. I cover
+these topics in the three parts below; a fourth covers package related
 issues.
 
 -   [Part I Package Download
     Counts](#i---computing-package-download-counts) describes how
     `cranDownloads()` extends the functionality of
     [`cranlogs::cran_downloads()`](https://r-hub.github.io/cranlogs/) by
-    adding a more user-friendly interface and providing generic R
-    `plot()` methods to make visualization easy.
+    adding a more user-friendly interface and by providing a generic R
+    `plot()` method to make visualization easy.
 -   [Part II Package Download Rank
     Percentiles](#ii---computing-package-download-rank-percentiles)
     describes how `packageRank()` uses rank percentiles, a nonparametric
     statistic that tells you the percentage of observations (i.e.,
-    packages) with fewer counts (i.e., downloads), to help you see how
-    your package is doing relative to *all* other
-    [CRAN](https://CRAN.R-project.org/) packages.
+    packages) with fewer downloads, to help you see how your package is
+    doing relative to *all* other [CRAN](https://CRAN.R-project.org/)
+    packages.
 -   [Part III Package Download
-    Filters](#iii---filtering-package-download-counts) describes how
-    filters are used to reduce the presence of software and behavioral
-    artifacts that would otherwise inflate package download counts.
--   [Part IV Notes](#iv---notes) describes some technical issues,
-    including the use of memoization, time zone issues, and internet
-    connection time out problems.
+    Filters](#iii---filtering-package-download-counts) describes how I
+    filter out software and behavioral artifacts that inflate package
+    download counts.
+-   [Part IV Notes](#iv---notes) describes technical issues, including
+    the use of memoization, time zones, and the internet connection time
+    out problem.
 
+Three things to note. First,
 [‘packageRank’](https://CRAN.R-project.org/package=packageRank) requires
-an active internet connection, and relies on the
-[‘cranlogs’](https://CRAN.R-project.org/package=cranlogs) package and
-[RStudio’s download logs](http://cran-logs.rstudio.com/). The latter
-records traffic to the “0-Cloud” mirror at cloud.R-project.org, which is
-“currently sponsored by RStudio” and was formerly RStudio’s CRAN mirror.
-
-Note that logs for the previous day are generally posted by 17:00 UTC.
-Updated results for functions that rely on
+an active internet connection. Second,
+[‘packageRank’](https://CRAN.R-project.org/package=packageRank) relies
+on the [‘cranlogs’](https://CRAN.R-project.org/package=cranlogs) package
+and [RStudio’s download logs](http://cran-logs.rstudio.com/), which
+records traffic to the “0-Cloud” mirror at cloud.R-project.org (formerly
+RStudio’s CRAN mirror). So these are two potential points of failure for
+this package’s functions. Third, logs for the previous day are generally
+posted to RStudio’s download logs by 17:00 UTC. Results that rely on
 [‘cranlogs’](https://CRAN.R-project.org/package=cranlogs) are typically
 available soon thereafter.
 
@@ -247,6 +250,46 @@ plot(cranDownloads(packages = c("ggplot2", "data.table", "Rcpp"),
   from = "2020", to = "2020-03-20"), graphics = "base", same.xy = FALSE)
 ```
 
+#### unit of observation
+
+If you want to visualize the data from a different unit of observations,
+you can pass “day” (the default), “month”, or “year” to the
+`unit.observation` argument.
+
+For example, below is the plot for the daily downloads of
+[‘HistData’](https://CRAN.R-project.org/package=HistData) from January
+01 through August 15 2021.
+
+``` r
+plot(cranDownloads(packages = "HistData", from = "2021"))
+```
+
+![](man/figures/README-day_code-1.png)<!-- -->
+
+Here is the plot for the same data aggregated by month:
+
+``` r
+plot(cranDownloads(packages = "HistData", from = "2021"), unit.observation = "month")
+```
+
+![](man/figures/README-month_code-1.png)<!-- -->
+
+There are three things to keep in mind with these aggregated data plots.
+First, each point, with the likely exception of the latest observation
+(far right), represents the total count on the last day of the month.
+For example, in the plot above the solid point on the far left records
+the total download count for the month of January (plotted on January
+31). Second, it’s likely that the latest observation is still
+in-progress. In that case, two points are plotted (far right): a
+“grayed-out” point for the in-progress total and a highlighted point for
+the estimated total. Currently, I compute the estimate by extrapolating
+from the proportion of the unit of observation completed. For example,
+in the plot above, there were 2,010 recorded downloads from August 1
+through August 15. This leads to an estimated 4,154 downloads for the
+month (31 / 15 \* 2010). Third, if you include a smoother, via
+`smooth = TRUE`, the curve will only pass through complete, not
+in-progress, data.
+
 #### `packages = NULL`
 
 `cranlogs::cran_download(packages = NULL)` computes the total number of
@@ -360,7 +403,7 @@ Do Wednesday and Saturday reflect surges of interest in the package or
 surges of traffic to [CRAN](https://CRAN.R-project.org/)? To put it
 differently, how can we know if a given download count is typical or
 unusual? One way to answer these questions is to locate your package in
-the frequency distribution of download counts.
+the overall frequency distribution of download counts.
 
 Below are the distributions of logarithm of download counts for
 Wednesday and Saturday. The location of a vertical segment along the
@@ -447,10 +490,8 @@ To put it differently:
 ``` r
 (pkgs.with.fewer.downloads <- sum(downloads < downloads["cholera"]))
 > [1] 12250
-
 (tot.pkgs <- length(downloads))
 > [1] 18038
-
 round(100 * pkgs.with.fewer.downloads / tot.pkgs, 1)
 > [1] 67.9
 ```
@@ -506,33 +547,31 @@ right (in blue).
 
 ### III - filtering package download counts
 
-Package downloads are computed by counting the number of log entries for
-each package. While straightforward, this approach can run into
-problems. Putting aside questions surrounding package dependencies, here
-I’m focussing on what I believe are two sets of “invalid” log entries.
+Package downloads are computed by counting log entries. While
+straightforward, this approach can run into problems. Putting aside the
+question of whether package dependencies should even be counted, here
+I’m focusing on what I believe are two sets of “invalid” log entries.
 The first, a software artifact, stems from entries that are smaller,
-often orders of magnitude smaller, than a package’s actual binary or
-source file size. Here, the problem is that the nominal count wrongly
-credits these downloads. The second, a behavioral artifact, emerges from
-efforts to download all of the packages on
-[CRAN](https://cran.r-project.org/). Here, the problem is that you get
-an inflated sense of interest in your package.
-
-An early but detailed analysis and discussion of both inflations is
-available as part of this [R-hub blog
+often orders of magnitude smaller, than the size of a package’s actual
+binary or source file. The second, a behavioral artifact, emerges from
+efforts to download all of [CRAN](https://cran.r-project.org/) (i.e.,
+*all* packages, including *all* past versions). In both cases, the
+problem is that reliance on nominal counts will give you an inflated
+sense of interest in your package. An early but detailed analysis and
+discussion of both inflations is included as part of this [R-hub blog
 post](https://blog.r-hub.io/2020/05/11/packagerank-intro/#inflationary-bias-of-download-counts).
 
 #### software artifacts
 
 When looking at package download logs, the first thing you’ll notice are
 wrongly sized log entries. They come in two sizes: “small” and “medium”.
-The “small” entries are approximately 500 bytes. The “medium” entries
-are variable in size. They fall anywhere between a “small” and a full
-download (i.e., “small” &lt;= “medium” &lt;= full download). “Small”
-entries manifest themselves as standalone entries, as part of pair with
-a full download, or as part of a triplet with a “medium” and a full
-download. “Medium” entries manifest themselves as standalone entries, or
-as part of the aforementioned triplet.
+While the “small” entries are approximately 500 bytes in size, the size
+of “medium” entries are variable: they fall anywhere between a “small”
+and a full download (i.e., “small” &lt;= “medium” &lt;= full download).
+“Small” entries manifest themselves as standalone entries, as paired
+with a full download, or as part of a triplet with a “medium” and a full
+download. “Medium” entries manifest themselves as either standalone
+entries or as part of a triplet.
 
 The example below illustrates a triplet:
 
@@ -546,70 +585,69 @@ packageLog(date = "2020-07-01")[4:6, -(4:6)]
 
 The “medium” entry is the first observation (99,622 bytes). The observed
 full download is the second entry (4,161,948 bytes). The “small” entry
-is the last observation (536 bytes). Incidentally, what makes a triplet
-a triplet (or a pair a pair) is that all members have, at a minimum,
-identical or adjacent time stamps.
+is the last observation (536 bytes). At a minimum, what makes a triplet
+a triplet (or a pair a pair) is that all members share system
+configuration (e.g. IP address, etc.) and have identical or adjacent
+time stamps.
 
 To deal with the inflationary effect of “small” entries, I filter out
 observations smaller than 1,000 bytes (the smallest package appears to
 be [‘source.gist’](https://cran.r-project.org/package=source.gist),
 which weighs in at 1,200 bytes). “Medium” entries are harder to handle.
 I remove them using either a triplet-specific filter or a filter that
-looks up a package’s size.
+looks up a package’s actual size.
 
 #### behavioral artifacts
 
-While wrongly sized entries are fairly easy to spot, seeing other types
-of “invalid” entries can sometimes require a change of perspective. What
-I have in mind here are downloads that are a consequence of efforts to
-download all of [CRAN](https://cran.r-project.org/): *all* packages
-including *all* past versions. For details and evidence see the [R-hub
-blog
-post](https://blog.r-hub.io/2020/05/11/packagerank-intro/#inflationary-bias-of-download-counts)
-mentioned above (I believe this excludes mirroring activity via
-`rsync`).
+While wrongly sized entries are fairly easy to spot, seeing the effect
+of efforts to download [CRAN](https://cran.r-project.org/) require a
+change of perspective.
 
-Consider the example below:
+While details and further evidence can be found in the [R-hub blog
+post](https://blog.r-hub.io/2020/05/11/packagerank-intro/#inflationary-bias-of-download-counts)
+mentioned above, I’ll try to illustrate the problem with the following
+example:
 
 ``` r
 packageLog(packages = "cholera", date = "2020-07-31")[8:14, -(4:6)]
->              date     time    size package version country ip_id
-> 132509 2020-07-31 21:03:06 3797776 cholera   0.2.1      US    14
-> 132106 2020-07-31 21:03:07 4285678 cholera   0.4.0      US    14
-> 132347 2020-07-31 21:03:07 4109051 cholera   0.3.0      US    14
-> 133198 2020-07-31 21:03:08 3766514 cholera   0.5.0      US    14
-> 132630 2020-07-31 21:03:09 3764848 cholera   0.5.1      US    14
-> 133078 2020-07-31 21:03:11 4275831 cholera   0.6.0      US    14
-> 132644 2020-07-31 21:03:12 4284609 cholera   0.6.5      US    14
 ```
+
+    >              date     time    size package version country ip_id
+    > 132509 2020-07-31 21:03:06 3797776 cholera   0.2.1      US    14
+    > 132106 2020-07-31 21:03:07 4285678 cholera   0.4.0      US    14
+    > 132347 2020-07-31 21:03:07 4109051 cholera   0.3.0      US    14
+    > 133198 2020-07-31 21:03:08 3766514 cholera   0.5.0      US    14
+    > 132630 2020-07-31 21:03:09 3764848 cholera   0.5.1      US    14
+    > 133078 2020-07-31 21:03:11 4275831 cholera   0.6.0      US    14
+    > 132644 2020-07-31 21:03:12 4284609 cholera   0.6.5      US    14
 
 Here, we see that seven different versions of the package were
 downloaded in a sequential bloc. A little digging show that these seven
-versions represent *all* prior versions of ‘cholera’:
+versions represent *all* versions of ‘cholera’ available on that date:
 
 ``` r
 packageHistory(package = "cholera")
->   Package Version       Date Repository
-> 1 cholera   0.2.1 2017-08-10    Archive
-> 2 cholera   0.3.0 2018-01-26    Archive
-> 3 cholera   0.4.0 2018-04-01    Archive
-> 4 cholera   0.5.0 2018-07-16    Archive
-> 5 cholera   0.5.1 2018-08-15    Archive
-> 6 cholera   0.6.0 2019-03-08    Archive
-> 7 cholera   0.6.5 2019-06-11    Archive
-> 8 cholera   0.7.0 2019-08-28    Archive
-> 9 cholera   0.7.5 2021-04-22       CRAN
 ```
+
+    >   Package Version       Date Repository
+    > 1 cholera   0.2.1 2017-08-10    Archive
+    > 2 cholera   0.3.0 2018-01-26    Archive
+    > 3 cholera   0.4.0 2018-04-01    Archive
+    > 4 cholera   0.5.0 2018-07-16    Archive
+    > 5 cholera   0.5.1 2018-08-15    Archive
+    > 6 cholera   0.6.0 2019-03-08    Archive
+    > 7 cholera   0.6.5 2019-06-11    Archive
+    > 8 cholera   0.7.0 2019-08-28       CRAN
 
 While there are legitimate reasons for downloading past versions (e.g.,
 research, container-based software distribution, etc.), examples like
 the above are “fingerprints” of efforts to download
-[CRAN](https://cran.r-project.org/). The upshot here is that when your
+[CRAN](https://cran.r-project.org/). The problem here is that when your
 package is downloaded as part of such efforts, that download is more a
 reflection of an interest in [CRAN](https://cran.r-project.org/) as
-collection of packages than an interest in your package *per se*. And
+collection of packages than of an interest in your package *per se*. And
 since one of the uses of counting package downloads is to estimate
-interest in your package, it may be useful to exclude such entries.
+interest in *your* package, it may be useful to exclude such entries.
 
 To do so, I try to filter out these entries in two ways. The first
 identifies IP addresses that download “too many” packages and then
@@ -675,7 +713,7 @@ can be computationally expensive, especially when making relative
 comparisons like computing rank percentiles. This is because we need to
 apply the package specific filters to all the observed packages in a
 log, which can involve tens of thousands of packages. While not
-unfeasible, this will currently take a long time.
+unfeasible, currently this takes a long time.
 
 For this reason, when setting `all.filters = TRUE`, certain functions
 default to use only CRAN specific filters: `packageRank()`,
@@ -689,14 +727,15 @@ package specific functions: `packageLog()`, `packageCountry()`, and
 #### country codes (top level domains)
 
 While IP addresses are anonymized, `packageCountry()` and
-`countryPackage()` make use of the fact that the logs attempt to provide
+`countryPackage()` make use of the fact that the logs provide
 corresponding ISO country codes or top level domains (e.g., AT, JP, US).
-Note however, that this covers about 85% of observations (i.e.,
+Note that coverage extends to about 85% of observations (i.e.,
 approximately 15% country codes are NA). Also, for what it’s worth,
 there seems to be a a couple of typos for country codes: “A1” (A +
 number one) and “A2” (A + number 2). According to [RStudio’s
 documentation](http://cran-logs.rstudio.com/), this coding was done
-using MaxMind’s free database, which no longer seems to be available.
+using MaxMind’s free database, which no longer seems to be available and
+may be a bit out of date.
 
 #### memoization
 
@@ -722,8 +761,7 @@ if (RCurl::url.exists(url)) {
 ```
 
 This means that logs are intelligently cached; those that have already
-been downloaded, in your current R session, will not be downloaded
-again.
+been downloaded in your current R session will not be downloaded again.
 
 #### time zones
 
@@ -741,7 +779,7 @@ packageRank(packages = "ergm")
 ```
 
 However, depending on *where* you make this request, you may not get the
-data you expect: in Honolulu, USA, you will; in Sydney, Australia, you
+data you expect. In Honolulu, USA, you will but in Sydney, Australia you
 won’t. The reason is that you’ve somehow forgotten a key piece of
 trivia: RStudio typically posts yesterday’s log around 17:00 UTC the
 following day.
@@ -852,7 +890,7 @@ features”](https://cran.r-project.org/doc/manuals/r-release/NEWS.html):
     R_DEFAULT_INTERNET_TIMEOUT, still defaulting to 60 (seconds) if that is not set
     or invalid.
 
-This change occasionally affected functions that download logs. This was
-especially true over slower internet connections and with larger log
-files. To fix this, functions that use `fetchCranLog()` will, if needed,
-temporarily set the timeout to 300 seconds.
+This change can affect functions that download logs. This is especially
+true over slower internet connections or when you’re dealing with large
+log files. To fix this, `fetchCranLog()` will, if needed, temporarily
+set the timeout to 600 seconds.
