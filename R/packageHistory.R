@@ -1,42 +1,75 @@
-#' Extract package version history CRAN and Archive.
+#' Extract package or R version history.
 #'
 #' Date and version of all publications.
-#' @param package Character. Package name.
+#' @param package Character. Vector of package names (including "R").
 #' @param check.package Logical. Validate and "spell check" package.
 #' @export
 
 packageHistory <- function(package = "cholera", check.package = TRUE) {
+  package0 <- package
+
+  if ("R" %in% package) {  
+    pkg.idx <- seq_along(package)
+    r.position <- which(package == "R")
+    pkg.idx <- pkg.idx[pkg.idx != r.position]
+
+    r_v <- rversions::r_versions()
+    names(r_v) <- tools::toTitleCase(names(r_v))
+    r_v$Date <- as.Date(r_v$Date)
+    nms <- names(r_v)
+    r_v$Package <- "R"
+    r_v <- list(r_v[, c("Package", nms)])
+
+    package <- package[-r.position]
+  }
+
   if (check.package) package <- checkPackage(package)
 
   # Use packageHistory0() for "missing" and latest packages.
   # e.g.,"VR" in cran_package() but not cran_package_history()
-  history <- try(pkgsearch::cran_package_history(package), silent = TRUE)
+  history <- try(lapply(package, pkgsearch::cran_package_history),
+    silent = TRUE)
 
   if (any(class(history) == "try-error")) {
-    out <- packageHistory0(package)
+    out <- lapply(package, packageHistory0)
   } else {
     # vars <- c("Package", "Version", "Date/Publication", "crandb_file_date",
     #   "date")
     #    Error: Can't subset columns that don't exist.
     # x Column `Date/Publication` doesn't exist.
     vars <- c("Package", "Version", "crandb_file_date", "date")
-    history <- data.frame(history[, vars])
-    all.archive <- pkgsearch::cran_package(package, "all")$archived
 
-    if (all.archive) {
-      repository <- rep("Archive", nrow(history))
-    } else {
-      repository <- c(rep("Archive", nrow(history) - 1), "CRAN")
-    }
+    history <- lapply(history, function(x) data.frame(x[, vars]))
 
-    date <- strsplit(history$crandb_file_date, "[ ]")
-    date <- strsplit(history$date, "[ ]")
-    date <- as.Date(vapply(date, function(x) x[1], character(1L)))
-    out <- data.frame(history[, c("Package", "Version")], Date = date,
-      Repository = repository, stringsAsFactors = FALSE)
+    all.archive <- vapply(package, function(x) {
+      pkgsearch::cran_package(x, version = "all")$archived
+    }, logical(1L))
+
+    out <- lapply(seq_along(history), function(i) {
+      h <- history[[i]]
+
+      if (all.archive[i]) {
+        repository <- rep("Archive", nrow(h))
+      } else {
+        repository <- c(rep("Archive", nrow(h) - 1), "CRAN")
+      }
+
+      date <- strsplit(h$crandb_file_date, "[ ]")
+      date <- strsplit(h$date, "[ ]")
+      date <- as.Date(vapply(date, function(x) x[1], character(1L)))
+      data.frame(h[, c("Package", "Version")], Date = date,
+        Repository = repository, row.names = NULL, stringsAsFactors = FALSE)
+    })
   }
 
-  out
+  if ("R" %in% package0) {
+    c(out[seq_along(out) < r.position],
+      r_v,
+      out[seq_along(out) >= r.position])
+  } else {
+    if (length(out) == 1) out[[1]]
+    else out
+  }
 }
 
 #' Scrape package version history CRAN and Archive.
@@ -92,12 +125,12 @@ packageCRAN <- function(package = "cholera", check.package = TRUE,
     } else if (length(pkg.data) == 1) out <- package_info(pkg.data)
 
     if (!is.null(out)) {
-      if (identical(out$package, package)) {
+      if (identical(out$Package, package)) {
         if (size) out
-        else out[, names(out) != "size"]
+        else out[, names(out) != "Size"]
       }
-    } else NA
-  } else NA
+    }
+  }
 }
 
 #' Scrape package data from Archive.
@@ -167,9 +200,9 @@ packageArchive <- function(package = "cholera", check.package = TRUE,
 
       version.date <- lapply(version.date, function(x) {
         ptB <- unlist(strsplit(x[2], " "))
-        data.frame(version = unlist(strsplit(x[1], "_"))[2],
-                   date = as.Date(ptB[1]),
-                   size = unlist(strsplit(ptB[length(ptB)], "&nbsp;")),
+        data.frame(Version = unlist(strsplit(x[1], "_"))[2],
+                   Date = as.Date(ptB[1]),
+                   Size = unlist(strsplit(ptB[length(ptB)], "&nbsp;")),
                    stringsAsFactors = FALSE)
       })
 
@@ -177,14 +210,14 @@ packageArchive <- function(package = "cholera", check.package = TRUE,
       readme <- vapply(version.date, function(x) all(is.na(x)), logical(1L))
       if (any(readme)) version.date <- version.date[!readme]
 
-      out <- data.frame(package, do.call(rbind, version.date),
-        repository = "Archive", stringsAsFactors = FALSE)
+      out <- data.frame(Package = package, do.call(rbind, version.date),
+        Repository = "Archive", stringsAsFactors = FALSE)
     }
 
     if (any(ancestry.check)) out <- rbind(ancestry.data, out)
-    out <- out[order(out$date), ]
+    out <- out[order(out$Date), ]
     if (size) out
-    else out[, names(out) != "size"]
+    else out[, names(out) != "Size"]
   }
 }
 
@@ -199,10 +232,10 @@ package_info <- function(pkg.data, repository = "CRAN") {
   dat <- unlist(strsplit(pkg.data, '.tar.gz'))
   ptA <- unlist(strsplit(dat[1], "_"))
   ptB <- unlist(strsplit(dat[2], " "))
-  data.frame(package = ptA[1],
-             version = ptA[2],
-             date = as.Date(ptB[1]),
-             size = unlist(strsplit(ptB[length(ptB)], "&nbsp;")),
-             repository = "CRAN",
+  data.frame(Package = ptA[1],
+             Version = ptA[2],
+             Date = as.Date(ptB[1]),
+             Size = unlist(strsplit(ptB[length(ptB)], "&nbsp;")),
+             Repository = "CRAN",
              stringsAsFactors = FALSE)
 }

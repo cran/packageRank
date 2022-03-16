@@ -1,3 +1,29 @@
+packageRank 0.6.0
+==================
+
+# Fixes #
+
+- amend fetchCranLog() message.
+- fix tripletFilter().
+- add exception and warning for packages with zero downloads (not in log) for
+  packageLog() and packageRank().
+- fix variable names in packageCRAN() and packageArchive().
+- fix y-axis typo and labels in cranPlot().
+- set data.frame(row.names = NULL) in packageHistory().
+- amend/update country code top level domains in cranMirrors().
+
+# Function Changes #
+
+- add packageHistory("R").
+- allow multiple packages (vector) in packageHistory() and packageMRAN().
+- restrict parLapply() to dev.mode = TRUE.
+
+# Graphical Changes #
+
+- amend graphical elements for estimate and in-progress download counts in
+  plot.cranDownloads().
+
+
 packageRank 0.5.0
 ==================
 
@@ -7,8 +33,10 @@ packageRank 0.5.0
 
 # Function Changes #
 
-- visualize different units of observation: "day" (default), "month", and "year" with plot.cranDownloads(unit.observation = "day").
-- add in-progress plots with nominal and estimated totals for aggregate units of observation.
+- visualize different units of observation: "day" (default), "month", and
+  "year" with plot.cranDownloads(unit.observation = "day").
+- add in-progress plots with nominal and estimated totals for aggregate units
+  of observation.
 
 
 packageRank 0.4.2
