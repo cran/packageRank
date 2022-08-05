@@ -3,18 +3,17 @@
 #' Check date format and validate date.
 #' @param date Character. \code{"yyyy-mm-dd"}, \code{"yyyy-mm"}, \code{"yyyy"} or \code{yyyy} (numeric).
 #' @param type Character. Type of date "to" or "from".
+#' @param fix.date. Fix date when directly accessing RStudio logs.
 #' @noRd
 
-resolveDate <- function(date, type = "from") {
+resolveDate <- function(date, type = "from", fix.date = FALSE) {
   if (!type %in% c("to", "from")) {
     stop('type must be "to" or "from".', call. = FALSE)
   }
 
   first.log <- as.Date("2012-10-01") # first log on RStudio CRAN mirror.
   date.txt <- as.character(date)
-
   cal.date <- logDate()
-
   mm <- c(paste0(0, 1:9), paste(10:12))
 
   if (nchar(date.txt) == 7L & grepl("-", date.txt)) {
@@ -54,11 +53,11 @@ resolveDate <- function(date, type = "from") {
   }
 
   if (x.date < first.log) {
-    msg <- paste0('RStudio CRAN logs begin on ', first.log, ".")
-    stop(msg, call. = FALSE)
+    if (x.date < first.log) x.date <- first.log
+    message(paste0('Note: RStudio CRAN logs begin on ', first.log, "."))
   } else x.date
 
-  logDate(x.date, warning.msg = FALSE)
+  logDate(x.date, warning.msg = FALSE, fix.date = fix.date)
 }
 
 dayOfMonth <- function(string, first.log, end.of.month = FALSE) {

@@ -22,10 +22,11 @@ packageLog <- function(packages = "cholera", date = NULL, all.filters = FALSE,
   check.package = TRUE, multi.core = TRUE, dev.mode = FALSE) {
 
   if (check.package) packages <- checkPackage(packages)
-  ymd <- logDate(date)
-  cran_log <- fetchCranLog(date = ymd, memoization = memoization)
+  file.url.date <- logDate(date)
+  cran_log <- fetchCranLog(date = file.url.date, memoization = memoization)
   cran_log <- cleanLog(cran_log)
 
+  ymd <- rev_fixDate_2012(file.url.date)
   cores <- multiCore(multi.core)
 
   if (all.filters) {
@@ -52,9 +53,15 @@ packageLog <- function(packages = "cholera", date = NULL, all.filters = FALSE,
     packages <- packages[!unobs.pkgs]
   }
 
-  out <- parallel::mclapply(packages, function(p) {
-    cran_log[cran_log$package == p, ]
-  }, mc.cores = cores)
+  if (.Platform$OS.type == "windows") {
+    out <- lapply(packages, function(p) {
+      cran_log[cran_log$package == p, ]
+    })
+  } else {
+    out <- parallel::mclapply(packages, function(p) {
+      cran_log[cran_log$package == p, ]
+    }, mc.cores = cores)
+  }
 
   if (any(pkg_specific_filters)) {
     if (triplet.filter) {
@@ -79,12 +86,21 @@ packageLog <- function(packages = "cholera", date = NULL, all.filters = FALSE,
     }
   }
 
-  out <- parallel::mclapply(out, function(x) {
-    if (!"t2" %in% names(x)) x$date.time <- dateTime(x$date, x$time)
-    tmp <- x[order(x$date.time), ]
-    tmp$date.time <- NULL
-    tmp
-  }, mc.cores = cores)
+  if (.Platform$OS.type == "windows") {
+    out <- lapply(out, function(x) {
+      if (!"t2" %in% names(x)) x$date.time <- dateTime(x$date, x$time)
+      tmp <- x[order(x$date.time), ]
+      tmp$date.time <- NULL
+      tmp
+    })
+  } else {
+    out <- parallel::mclapply(out, function(x) {
+      if (!"t2" %in% names(x)) x$date.time <- dateTime(x$date, x$time)
+      tmp <- x[order(x$date.time), ]
+      tmp$date.time <- NULL
+      tmp
+    }, mc.cores = cores)
+  }
 
   names(out) <- packages
 
