@@ -1855,12 +1855,6 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
                lty = c("longdash", "dotted"),
                bty = "n")
 
-        if (r.version) {
-          r_v <- rversions::r_versions()
-          axis(3, at = as.Date(r_v$date), labels = paste("R", r_v$version),
-            cex.axis = 2/3, padj = 0.9)
-        }
-
       } else if (any(dat$partial)) {
         pltfrm <- unique(dat$platform)
         platform.data <- split(dat, dat$platform)
@@ -2090,12 +2084,12 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
             lines(smooth.data, lty = "solid", lwd = 1.5, col = pltfrm.col[i])
           }))
         }
+      }
 
-        if (r.version) {
-          r_v <- rversions::r_versions()
-          axis(3, at = as.Date(r_v$date), labels = paste("R", r_v$version),
-            cex.axis = 2/3, padj = 0.9)
-        }
+      if (r.version) {
+        r_v <- rversions::r_versions()
+        axis(3, at = as.Date(r_v$date), labels = paste("R", r_v$version),
+          cex.axis = 2/3, padj = 0.9)
       }
 
       title(main = "R Downloads")
@@ -2439,7 +2433,7 @@ rTotPlot <- function(x, statistic, graphics,  obs.ct, legend.location, points,
 
   dat <- x$cranlogs.data
   last.obs.date <- x$last.obs.date
-  ct <-  tapply(dat$count, dat$date, sum)
+  ct <- tapply(dat$count, dat$date, sum)
 
   if (any(dat$in.progress)) {
     dat <- data.frame(date = unique(dat$date),
@@ -2496,6 +2490,7 @@ rTotPlot <- function(x, statistic, graphics,  obs.ct, legend.location, points,
   } else if (obs.ct > 1) {
     if (graphics == "base") {
       type <- ifelse(points, "o", "l")
+      vars <- c("date", statistic)
 
       if (any(dat$in.progress)) {
         ip.sel <- dat$in.progress == TRUE
@@ -2521,16 +2516,16 @@ rTotPlot <- function(x, statistic, graphics,  obs.ct, legend.location, points,
         xlim <- range(dat$date)
 
         if (log.y) {
-          plot(complete$date, complete[, statistic], type = type,
-            xlab = "Date", ylab = paste0("log10 ", y.nm.case), xlim = xlim,
-            ylim = ylim, log = "y", pch = 16)
+          plot(complete[, vars], type = type, xlab = "Date",
+            ylab = paste0("log10 ", y.nm.case), xlim = xlim, ylim = ylim,
+            log = "y", pch = 16)
         } else {
-          plot(complete$date, complete[, statistic], type = type,
-            xlab = "Date", ylab = y.nm.case, xlim = xlim, ylim = ylim, pch = 16)
+          plot(complete[, vars], type = type, xlab = "Date", ylab = y.nm.case,
+            xlim = xlim, ylim = ylim, pch = 16)
         }
 
-        points(ip.data[, "date"], ip.data[, statistic], col = "black", pch = 0)
-        points(est.data[, "date"], est.data[, statistic], col = "red", pch = 1)
+        points(ip.data[, vars], col = "black", pch = 0)
+        points(est.data[, vars], col = "red", pch = 1)
 
         segments(complete[last.obs, "date"],
                  complete[last.obs, statistic],
@@ -2605,8 +2600,6 @@ rTotPlot <- function(x, statistic, graphics,  obs.ct, legend.location, points,
         xlim <- range(dat$date)
         ylim.data <- rbind(dat, dat.recompute)
         ylim <- range(ylim.data[, statistic])
-
-        vars <- c("date", statistic)
 
         if (log.y) {
           plot(complete[, vars], type = type, xlab = "Date",
