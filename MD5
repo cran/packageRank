@@ -1,6 +1,6 @@
-9de3056db793b9e852fa91e665fb1d3f *DESCRIPTION
+6af2c65059d1a8a5cb1b69605339bff4 *DESCRIPTION
 0a8c07a36ffd0b82c755b20f2881d3ca *NAMESPACE
-8d30882f7fb7ff96c5201d8a028d726a *NEWS.md
+176f6563f156b7cdf7b82b58a4f299fe *NEWS.md
 a48dd97b60a18039caac369c74df4c81 *R/annualDownloads.R
 13161b71e5c535355e4a8f415c3ffbe1 *R/archivePackages.R
 defa3fc828b97113a6b48299bc281229 *R/bioconductorDownloads.R
@@ -46,12 +46,12 @@ d7eb2693599e4203ef8494804c8e004a *R/resolveDate.R
 7c2306fec4896467a96d66c1c880324c *R/smallFilter.R
 bdc4df0c5fb8221373dd601f8af4ef09 *R/topCountry.R
 5b5a210fca1c58fcf3ff6d21c09f7ed4 *R/tripletFilter.R
-ad1a4d3f2a0c0aa02b35487bf74c48dd *R/utc.R
+672b076d2c9db2874463579a378772a0 *R/utc.R
 7c0960031af279b27215fafc4f9e35ec *R/utilities.R
 f4805d55251f7495d473974966c86594 *R/validatePackage.R
 2ecdbdae7cf8201ef7a2825adc7b554a *R/versionPlot.R
 564b9f85fc20695c84b30163a14f4b05 *R/weeklyDownloads.R
-3bd855f66d44a881d9b79126ce2a2fbd *README.md
+ee42dde78e73875cefa48a70642c846e *README.md
 6dbcd458349f6cadc45915643e4b8bd8 *data/blog.data.rda
 e8d683fcaa35c59d07a3f6c98291bfa9 *data/rstudio.logs.rda
 97725d4f7bf141164980f2278d90f246 *man/annualDownloads.Rd
