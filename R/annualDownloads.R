@@ -3,20 +3,17 @@
 #' From RStudio's CRAN Mirror http://cran-logs.rstudio.com/
 #' @param start.yr Numeric or Integer.
 #' @param end.yr Numeric or Integer.
-#' @param multi.core Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. Mac and Unix only.
 #' @export
 
-annualDownloads <- function(start.yr = 2013, end.yr = 2020, multi.core = TRUE) {
-  cores <- multiCore(multi.core)
-
-  dwnlds <- parallel::mclapply(start.yr:end.yr, function(x) {
-    x <- cranDownloads(from = x, to = x)$cranlogs.data
+annualDownloads <- function(start.yr = 2013, end.yr = 2022) {
+  dwnlds <- lapply(start.yr:end.yr, function(y) {
+    x <- cranDownloads(from = y, to = y)$cranlogs.data
     x$year <- as.numeric(format(x$date, "%Y"))
     x$day.mo <- format(x$date, "%d %b")
     x$percent <- 100 * x$count / sum(x$count)
     x
-  }, mc.cores = cores)
-
+  })
+  
   out <- do.call(rbind, dwnlds)
   day.month <- dayMonth()
   out <- merge(out, day.month, by.x = "day.mo", by.y = "date.nm")
@@ -32,14 +29,15 @@ annualDownloads <- function(start.yr = 2013, end.yr = 2020, multi.core = TRUE) {
 #' @param statistic Character. "count" or "percent".
 #' @param pool.obs Logical.
 #' @param log.y Logical. Base 10 logarithm of y-axis.
+#' @param sep.y Logical. Separate, independent y-scales for each panel.
 #' @param nrow Numeric. Number of rows for ggplot2 facets.
-#' @param smooth Logical. Add smoother. 2/3 is built-in default.
-#' @param span Numeric. Smoothing parameter for geom_smooth(); c.f. stats::loess(span).
+#' @param smooth Logical. Add smoother (loess). 
+#' @param span Numeric. Smoothing parameter for geom_smooth(); c.f. stats::loess(span). 3/4 is built-in default.
 #' @param ... Additional plotting parameters.
 #' @export
 
 plot.annualDownloads <- function(x, statistic = "count", pool.obs = FALSE,
-  log.y = TRUE, nrow = 3, smooth = TRUE, span = 3/4, ...) {
+  log.y = FALSE, sep.y = FALSE, nrow = 3, smooth = TRUE, span = 3/4, ...) {
 
   day.month <- dayMonth()
   outliers <- outlierDays(x, c("2014-11-17", "2018-10-21", "2020-02-29"))
@@ -63,9 +61,14 @@ plot.annualDownloads <- function(x, statistic = "count", pool.obs = FALSE,
       y.var <- "Percent"
     } else stop('statistic must be "count" or "percent".')
 
-    p <- p + facet_wrap(~ year, nrow = nrow, scales = "free_y") +
-      scale_x_continuous(breaks = c(1, 122, 245),
-                         labels = day.month$date.nm[c(1, 122, 245)]) +
+    if (sep.y) {
+      p <- p + facet_wrap(~ year, nrow = nrow, scales = "free_y")
+    } else {
+      p <- p + facet_wrap(~ year, nrow = nrow)
+    }
+
+    p <- p + scale_x_continuous(breaks = c(1, 122, 245),
+                                labels = day.month$date.nm[c(1, 122, 245)]) +
       geom_vline(xintercept = c(122, 245),
                  colour = grDevices::adjustcolor("red", alpha.f = 0.5),
                  linetype = "dashed")

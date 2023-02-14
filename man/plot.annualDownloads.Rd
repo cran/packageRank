@@ -5,7 +5,8 @@
 \title{Plot method for annualDownloads().}
 \usage{
 \method{plot}{annualDownloads}(x, statistic = "count", pool.obs = FALSE,
-  log.y = TRUE, nrow = 3, smooth = TRUE, span = 3/4, ...)
+  log.y = FALSE, sep.y = FALSE, nrow = 3, smooth = TRUE, span = 3/4,
+  ...)
 }
 \arguments{
 \item{x}{object.}
@@ -16,11 +17,13 @@
 
 \item{log.y}{Logical. Base 10 logarithm of y-axis.}
 
+\item{sep.y}{Logical. Separate, independent y-scales for each panel.}
+
 \item{nrow}{Numeric. Number of rows for ggplot2 facets.}
 
-\item{smooth}{Logical. Add smoother. 2/3 is built-in default.}
+\item{smooth}{Logical. Add smoother (loess).}
 
-\item{span}{Numeric. Smoothing parameter for geom_smooth(); c.f. stats::loess(span).}
+\item{span}{Numeric. Smoothing parameter for geom_smooth(); c.f. stats::loess(span). 3/4 is built-in default.}
 
 \item{...}{Additional plotting parameters.}
 }

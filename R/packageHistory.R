@@ -6,6 +6,8 @@
 #' @export
 
 packageHistory <- function(package = "cholera", check.package = TRUE) {
+  if (!curl::has_internet()) stop("Check internet connection.", call. = FALSE)
+
   package0 <- package
 
   if ("R" %in% package) {
@@ -33,32 +35,22 @@ packageHistory <- function(package = "cholera", check.package = TRUE) {
   if (any(class(history) == "try-error")) {
     out <- lapply(package, packageHistory0)
   } else {
-    # vars <- c("Package", "Version", "Date/Publication", "crandb_file_date",
-    #   "date")
-    #    Error: Can't subset columns that don't exist.
-    # x Column `Date/Publication` doesn't exist.
-    vars <- c("Package", "Version", "crandb_file_date", "date")
-
-    history <- lapply(history, function(x) data.frame(x[, vars]))
-
-    all.archive <- vapply(package, function(x) {
-      pkgsearch::cran_package(x, version = "all")$archived
-    }, logical(1L))
-
-    out <- lapply(seq_along(history), function(i) {
-      h <- history[[i]]
-
-      if (all.archive[i]) {
-        repository <- rep("Archive", nrow(h))
+    out <- lapply(history, function(x) {
+      if ("Repository" %in% colnames(x)) {
+         tmp <- data.frame(x[, c("Package", "Version", "date", "Repository")])
+         row.names(tmp) <- NULL
+         tmp$Date <- as.Date(tmp$date)
+         tmp$date <- NULL
+         if (nrow(tmp) > 1) tmp[-nrow(tmp), "Repository"] <- "Archive"
+         tmp <- tmp[, c("Package", "Version", "Date", "Repository")]
       } else {
-        repository <- c(rep("Archive", nrow(h) - 1), "CRAN")
+        tmp <- data.frame(x[, c("Package", "Version", "date")])
+        row.names(tmp) <- NULL
+        tmp$Date <- as.Date(tmp$date)
+        tmp$date <- NULL
+        tmp$Repository <- "Archive"
       }
-
-      date <- strsplit(h$crandb_file_date, "[ ]")
-      date <- strsplit(h$date, "[ ]")
-      date <- as.Date(vapply(date, function(x) x[1], character(1L)))
-      data.frame(h[, c("Package", "Version")], Date = date,
-        Repository = repository, row.names = NULL, stringsAsFactors = FALSE)
+     tmp
     })
   }
 
@@ -105,6 +97,7 @@ packageHistory0 <- function(package = "cholera", size = FALSE) {
 packageCRAN <- function(package = "cholera", check.package = TRUE,
   size = FALSE) {
 
+  if (!curl::has_internet()) stop("Check internet connection.", call. = FALSE)
   if (check.package) package <- checkPackage(package)
   url <- "https://cran.r-project.org/src/contrib/"
   web_page <- mreadLines(url)
@@ -148,6 +141,7 @@ packageCRAN <- function(package = "cholera", check.package = TRUE,
 packageArchive <- function(package = "cholera", check.package = TRUE,
   size = FALSE) {
 
+  if (!curl::has_internet()) stop("Check internet connection.", call. = FALSE)
   if (check.package) package <- checkPackage(package)
   root.url <- "https://cran.r-project.org/src/contrib/Archive/"
   url <- paste0(root.url, package)

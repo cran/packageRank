@@ -1,3 +1,26 @@
+### packageRank 0.8.0
+
+#### Fixes
+
+- add lookup for exceptions in cranMirrors().
+- fix plot.cranDownloads(graphics = "base", multi.plot = TRUE, smooth = TRUE).
+- fix sequenceFilter() for packages not in CRAN Archive.
+
+#### Function Change
+
+- set annualDownloads(log.y = FALSE).
+- add/set annualDownloads(sep.y = FALSE).
+- add/set cranMirrors(description = FALSE).
+- change logInfo(list.available = FALSE) to logInfo(show.available = FALSE).
+- set class of packageHistory()$Date to "Date".
+- archive/deprecate packageMRAN() and related functionality.
+- set loess as default smoother in plot.cranDownloads()
+
+#### Documentation
+
+- add discussion about R Windows Sunday downloads to README.
+
+
 ### packageRank 0.7.2
 
 #### Function Change
@@ -182,7 +205,7 @@
 - add subtitle argument to inflationPlot2().
 - add wed (Wednesday) argument to inflationPlot2().
 - change default orientation of ggplot2 facets in
-    plot.cranDownalods().
+    plot.cranDownloads().
 - note packageArchive() fix for ‘testthat’ filename typo/duplicate.
 - set geom_point(size = 1.5) for single day, multiple package plot in
     singlePlot()
