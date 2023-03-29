@@ -1,3 +1,44 @@
+### packageRank 0.8.1
+
+#### New Functionality
+
+- add packages_on_CRAN(), packages_in_Archive(), packages_observed_in_logs()
+  and packages_partitioned().
+- add extractArchiveDate().
+- add/set packages_partitioned(observed.downloads = FALSE).
+
+#### Fixes
+
+- amend packageLog() for packages that get filtered to zero.
+- amend/fix sizeFilter() for archive-only packages.
+- fix pkgsearch::cran_package_history() "try-error" in packageHistory().
+- fix ylim in plot.cranDownloads(graphics = "base", unit.observation = "week").
+- fix logInfo() when 'cranlogs' not available.
+- set filteredDownloads(all.filters = FALSE) if any individual filter is TRUE.
+- add temporary timeout = 600L to packages_partitioned().
+- set options(timeout = 600L) in cranPackageSize().
+- sort list element names in packageHistory().
+
+#### Function Changes
+
+- set packageLog(check.package = FALSE) in filteredDownloads().
+- memoize packages_partitioned().
+- add/set dev.mode = FALSE for ipFilter() in countryDistribution(), 
+  countryPackage() and ipPackage().
+- add memoized archivePackages().
+- refactor checkPackage().
+- change result data type and content of validatePackage().
+- add 'cranlogs' check to cranDownloads().
+- add/use memoized packageHistory0() in packageHistory().
+- allow mix of CRAN and Archive-only packages (and R) in packageHistory().
+- add memoized packages_on_CRAN().
+- add CRAN check to packageHistory().
+
+#### Documentation
+
+- note Wednesday R Windows application download spikes in README.
+
+
 ### packageRank 0.8.0
 
 #### Fixes

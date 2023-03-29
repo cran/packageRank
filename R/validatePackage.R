@@ -4,14 +4,15 @@
 #' @noRd
 
 validatePackage <- function(packages) {
-  check <- vapply(packages, function(x) {
+  check <- unlist(lapply(packages, function(x) {
     class(try(pkgsearch::cran_package(x), silent = TRUE))
-  }, character(1L))
-
+  }))
+  
   if (any(check == "try-error")) {
-    list(invalid = names(check[check == "try-error"]),
-         valid = names(check[check == "cran_package"]))
-  } else packages
+    data.frame(package = packages, pkgsearch = check != "try-error")
+  } else {
+    data.frame(package = packages, pkgsearch = TRUE)
+  }
 }
 
 #' Check for valid package names (scrape CRAN).
@@ -44,7 +45,7 @@ validatePackage0 <- function(packages, check.archive = TRUE) {
   }
 
   if (check.archive) {
-    archive <- setdiff(archivePackages(), pkgs)
+    archive <- setdiff(marchivePackages(), pkgs)
     pkgs <- c(pkgs, archive)
   }
 
