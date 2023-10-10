@@ -5,7 +5,7 @@
 #' @param check.package Logical. Validate and "spell check" package.
 #' @export
 
-packageHistory <- function(package = "cholera", check.package = TRUE) {
+packageHistory <- function(package = "cholera", check.package = FALSE) {
   if (!curl::has_internet()) stop("Check internet connection.", call. = FALSE)
 
   package0 <- package
@@ -45,10 +45,10 @@ packageHistory <- function(package = "cholera", check.package = TRUE) {
     }
       
     if (any(on.cran)) {
-       history <- lapply(package[on.cran], function(x) {
-         pkgsearch::cran_package_history(x)
-       })
-      
+      history <- lapply(package[on.cran], function(x) {
+        pkgsearch::cran_package_history(x)
+      })
+
       cran.out <- transform_pkgsearch(history)
     }
     

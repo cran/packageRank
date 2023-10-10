@@ -31,14 +31,19 @@ You can read more about the package the sections below:
 - [IV Availability of Results](#iv---availability-of-results) discusses
   when results become available and how to use `logInfo()` to check the
   availability of today’s results.
-- [V Data Fixes](#v---data-fixes) discusses two
+- [V Data Fixes A](#v---data-fixes-a) discusses two
   functions,`fixDate_2012()` and `fixCranlogs()`, which address data
   problems with logs from 2012 and 2013.
-- [VI Et Cetera](#vi---et-cetera) discusses country code top-level
-  domains (e.g., countryPackage() and packageCountry()), the use of
+- [VI Data Fixes B](#vi---data-fixes-b) discusses a “doubling” of
+  package and R application download counts that appeared in the second
+  half of September through the beginning of October 2023. By default, a
+  fix is incorporated in `packageRank::cranDownloads()`.
+- [VII et cetera](#vii---et-cetera) discusses country code top-level
+  domains (e.g., `countryPackage()` and `packageCountry()`), the use of
   memoization, the effect of time zones, the internet connection time
-  out problem, and the recent (and ongoing) spikes in the download of
-  the Windows version of the R application on Sundays and Wednesdays.
+  out problem, and the spikes in the download of the Windows version of
+  the R application on Sundays and Wednesdays between 06 November 2022
+  and 19 March 2023.
 
 ### getting started
 
@@ -900,13 +905,14 @@ logInfo()
     $status
     [1] "Today's log is typically posted by 09:00 PST (01 Feb 17:00 GMT)."
 
-### V - data fixes
+### V - data fixes A
 
 For the historically minded, there are two data fixes to note. The first
 stems from problems with the logs when Posit/RStudio first began posting
 them. The second stems from how
-[‘cranlogs’](https://CRAN.R-project.org/package=cranlogs) works. The
-fixes work and are documented in two functions:
+[‘cranlogs’](https://CRAN.R-project.org/package=cranlogs) works.
+
+The fixes are coded in two functions:
 
 #### `fixDate_2012()`
 
@@ -962,7 +968,87 @@ eight problematic dates are requested. The details about the 8 days and
 `fixCranlogs()` can be found
 [here](https://github.com/lindbrook/packageRank/blob/master/docs/logs.md).
 
-### VI - et cetera
+### VI - data fixes B
+
+Recently, two additional data problems have emerged. First, from
+2023-09-19 through 2023-10-01, the download counts for R packages (and
+the total number of CRAN downloads, computed via `packages = NULL`)
+returned by `cranlogs::cran_downloads()` is twice what one would expect
+when looking at the actual log(s):
+
+For example:
+
+``` r
+cranlogs::cran_downloads(packages = "sna", from = "2023-09-19", to = "2023-09-19")
+>         date count package
+> 1 2023-09-19  1524     sna
+```
+
+The corresponding Posit/RStudio log shows half the number of downloads:
+
+``` r
+nrow(packageRank::packageLog(packages = "sna", date = "2023-09-19"))
+> [1] 762
+```
+
+This is an across-the-board effect for all packages. Here’s the overview
+for the total CRAN download counts:
+
+             date   Posit    cranlogs ratio
+    1  2023-09-15 6479353     6479353     1
+    2  2023-09-16 3516904     3516904     1
+    3  2023-09-17 3534662     3534662     1
+    4  2023-09-18 7309822     7309822     1
+    5  2023-09-19 7608886    15217772     2
+    6  2023-09-20 7488178    14976356     2
+    7  2023-09-21 6862071    13724142     2
+    8  2023-09-22 6410593    12821186     2
+    9  2023-09-23 4011634     8023268     2
+    10 2023-09-24 3548594     7097188     2
+    11 2023-09-25 6845864    13691728     2
+    12 2023-09-26 7204419    14408838     2
+    13 2023-09-27 7188019    14376038     2
+    14 2023-09-28 6526022    13052044     2
+    15 2023-09-29 5653322    11306644     2
+    16 2023-09-30 3165387     6330774     2
+    17 2023-10-01 3277506     6555012     2
+    18 2023-10-02 6268556     6268556     1
+    19 2023-10-03 6732379     6732379     1
+
+Details and code for replication can be found in issue
+[\#68](https://github.com/r-hub/cranlogs/issues/68) in the `cranlogs`
+GitHub repository.
+
+Second, from 2023-09-13 through 2023-10-02, the download counts for the
+R application returned by `cranlogs::cran_downloads(packages = "R")`, is
+also twice what one would expect when looking at the actual log(s).
+There are, however, two exceptions: 1) on 2023-09-28 the counts are
+identical but for a “rounding error” possibly due to an NA value and 2)
+on 2023-09-30 there is actually a three-fold difference.
+
+Here are the respective count ratios:
+
+        2023-09-12 2023-09-13 2023-09-14 2023-09-15 2023-09-16 2023-09-17 2023-09-18 2023-09-19
+    osx          1          2          2          2          2          2          2          2
+    src          1          2          2          2          2          2          2          2
+    win          1          2          2          2          2          2          2          2
+        2023-09-20 2023-09-21 2023-09-22 2023-09-23 2023-09-24 2023-09-25 2023-09-26 2023-09-27
+    osx          2          2          2          2          2          2          2          2
+    src          2          2          2          2          2          2          2          2
+    win          2          2          2          2          2          2          2          2
+        2023-09-28 2023-09-29 2023-09-30 2023-10-01 2023-10-02 2023-10-03
+    osx   1.000000          2          3          2          2          1
+    src   1.000801          2          3          2          2          1
+    win   1.000000          2          3          2          2          1
+
+Details and code for replication can be found in issue
+[\#69](https://github.com/r-hub/cranlogs/issues/69).
+
+Assuming the logs are “correct”, why these two problems emerged is
+unclear. For now, `packageRank::cranDownloads()` fixes both by default
+via the `fix.cranlogs = TRUE` argument.
+
+### VII - et cetera
 
 For those interested in directly using the [Posit/RStudio download
 logs](http://cran-logs.rstudio.com/), this section describes some issues
@@ -1113,35 +1199,41 @@ true over slower internet connections or when you’re dealing with large
 log files. To fix this, `fetchCranLog()` will, if needed, temporarily
 set the timeout to 600 seconds.
 
-#### R Windows Sunday and Wednesday downloads
+#### R Windows Sunday and Wednesday download spikes
 
 The graph above for [R downloads](#packages--r) shows the daily
 downloads of the R application broken down by platform (Mac, Source,
 Windows). In it, you can see the typical weekly pattern of mid-week
-peaks and weekend troughs. However, starting Sunday, 06 November 2022
-and Wednesday, 18 January 2023, this pattern was broken. On subsequent
-Sundays and Wednesdays, there are noticeable spikes (almost an order of
-magnitude difference) in the downloads of the Windows version of R.
+peaks and weekend troughs.
+
+However between 06 November 2022 and 19 March 2023, this was broken. On
+Sundays (06 November 2022 - 19 March 2023) and Wednesdays (18 January
+2023 - 15 March 2023), there were noticeable, repeated
+orders-of-magnitude spikes in the daily downloads of the Windows version
+of R.
 
 ``` r
-plot(cranDownloads("R", from = "2022-10-15", to = "2023-02-22"))
+plot(cranDownloads("R", from = "2022-10-06", to = "2023-04-14"))
 axis(3, at = as.Date("2022-11-06"), labels = "2022-11-06", cex.axis = 2/3, 
   padj = 0.9)
-axis(3, at = as.Date("2023-01-18"), labels = "2023-01-18", cex.axis = 2/3, 
+axis(3, at = as.Date("2023-03-19"), labels = "2023-03-19", cex.axis = 2/3, 
   padj = 0.9)
-abline(v = as.Date("2022-11-06 Sun"), col = "gray", lty = "dotted")
-abline(v = as.Date("2023-01-18 Wed"), col = "gray", lty = "dotted")
+abline(v = as.Date("2022-11-06"), col = "gray", lty = "dotted")
+abline(v = as.Date("2023-03-19"), col = "gray", lty = "dotted")
 ```
 
 ![](man/figures/README-sundays-1.png)<!-- -->
 
-This pattern does not extend to the Mac or Source versions. You can see
-this in the graphs below. In each plot, the the watershed date is
-plotted as a vertical line (red for Sunday; blue for Wednesday). Sunday
-and Wednesdays before the watershed are plotted with empty circles. If
-Sunday and Wednesdays after their respective watershed appear to be
-outliers, they are plotted with filled circles; otherwise, they are
-plotted with empty circles.
+These download spikes did not seem to affect either the Mac or Source
+versions. I show this in the graphs below. Each plot, which is
+individually scaled, breaks down the data in the graph above by day
+(Sunday or Wednesday) and platform.
+
+The key thing is to compare the data in the period bounded by vertical
+dotted lines with the data before and after. If a Sunday or Wednesday is
+orders-of-magnitude unusual, I plot that day with a filled rather than
+an empty circle. Only Windows, the final two graphs below, earn this
+distinction.
 
 ![](man/figures/README-sundays_mac-1.png)<!-- -->![](man/figures/README-sundays_mac-2.png)<!-- -->
 

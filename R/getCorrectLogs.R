@@ -1,7 +1,6 @@
 #' Get correct download logs to replace duplicates in 'cranlogs'.
 #'
 #' Correct for eight duplicates.
-#' @param date Character. Date. "yyyy-mm-dd".
 #' @note This documents code for the rstudio.logs R list object.
 #' @return A list with eight elements.
 #' @noRd
@@ -17,3 +16,24 @@ getCorrectLogs <- function() {
 
 # rstudio.logs <- getCorrectLogs()
 # usethis::use_data(rstudio.logs)
+
+#' Get multiple download logs for R application or packages.
+#'
+#' @param first Character or Date. Start date.
+#' @param last Character or Date. End date.
+#' @param log Character. Type of log: "packages" or "R".
+#' @note Code for replication.
+#' @return A list of log data frames.
+#' @noRd
+
+getLogs <- function(first = "2023-09-19", last = "2023-10-01", 
+  log = "packages") {
+
+  dates <- seq.Date(logDate(first), logDate(last), by = "days")
+  if (log == "packages") fn <- fetchCranLog
+  else if (log == "R") fn <- fetchRLog
+  else stop('log must be "packages" or "R".', call. = FALSE)
+  logs <- lapply(dates, fn)
+  names(logs) <- dates
+  logs
+}
