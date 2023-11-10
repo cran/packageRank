@@ -1,3 +1,20 @@
+### packageRank 0.8.3
+
+#### Fixes
+
+- use packageLifeFilter() only when cranDownloads(check.package = TRUE).
+- remove fix for doubled cranlogs::cran_downloads(packages %in% c(NULL, pkg))
+  counts; underlying 'cranlogs' issue #68 fixed.
+
+#### Documentation
+
+- amend/update README.
+
+####  Changes
+
+- clean DESCRIPTION Imports.
+
+
 ### packageRank 0.8.2
 
 #### Fixes
