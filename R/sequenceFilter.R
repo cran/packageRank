@@ -4,54 +4,17 @@
 #' @param packages Object. An R vector of package names.
 #' @param ymd Date. Log date.
 #' @param cores Numeric. Number of cores to use.
-#' @param download.time Numeric. Package download time allowance (seconds).
-#' @param dev.mode Logical. Development mode uses parallel::parLapply().
-#' @export
+#' @param delta.time Numeric. Time between package downloads (seconds).
+#' @noRd
 
-sequenceFilter <- function(dat, packages, ymd, cores, download.time = 30,
-  dev.mode = dev.mode) {
-
-  # win.exception <- .Platform$OS.type == "windows" & cores > 1
-
-  # if (dev.mode | win.exception) {
-  # if (dev.mode) {
-  #   cl <- parallel::makeCluster(cores)
-  #   parallel::clusterExport(cl = cl, envir = environment(),
-  #     varlist = c("packages", "ymd"))
-  #   arch.pkg.history <- parallel::parLapply(cl, packages, function(x) {
-  #     tmp <- packageHistory(x)
-  #     tmp[tmp$Date <= ymd & tmp$Repository == "Archive", ]
-  #   })
-  #   parallel::stopCluster(cl)
-  #
-  # } else {
-  #   if (.Platform$OS.type == "windows") cores <- 1L
-  # arch.pkg.history <- parallel::mclapply(packages, function(x) {
-  #   tmp <- packageHistory(x)
-  #   tmp[tmp$Date <= ymd & tmp$Repository == "Archive", ]
-  # }, mc.cores = cores)
-  # }
-
-  histories <- packageHistory(packages)
-  
-  if (is.data.frame(histories)) {
-    sel <- histories$Date <= ymd & histories$Repository == "Archive"
-    arch.pkg.history <- list(histories[sel, ])
-  } else if (is.list(histories)) {
-    arch.pkg.history <- lapply(histories, function(x) {
-      x[x$Date <= ymd & x$Repository == "Archive", ]
-    })
-  }
-  
-  sequences <- identifySequences(dat, arch.pkg.history,
-    download.time = download.time)
-
-  if (!is.null(sequences)) {
-    delete <- row.names(sequences)
-    if (!is.null(delete)) {
-      dat[!row.names(dat) %in% delete, ]
-    } else dat
-  } else dat
+sequenceFilter <- function(dat, packages, ymd, delta.time = 10) {
+  obs.versions <- unique(dat$version)
+  if (length(obs.versions) > 1) {
+    history <- packageHistory(packages, check.package = FALSE)
+    sel <- history$Date <= ymd & history$Repository == "Archive"
+    arch.pkg.history <- history[sel, ]
+    removeSequences(dat, arch.pkg.history, delta.time = delta.time)
+  } else if (length(obs.versions) == 1) dat
 }
 
 #' Extract Archive sequences from logs.
@@ -59,53 +22,95 @@ sequenceFilter <- function(dat, packages, ymd, cores, download.time = 30,
 #' From RStudio's CRAN Mirror http://cran-logs.rstudio.com/
 #' @param dat Object.
 #' @param arch.pkg.history Object.
-#' @param download.time Numeric. Package download time allowance (seconds).
+#' @param delta.time Numeric. Time between package downloads (seconds).
 #' @noRd
 
-identifySequences <- function(dat, arch.pkg.history, download.time = 30) {
-  lapply(seq_along(dat), function(i) {
-    pkg.data <- dat[[i]]
-    pkg.history <- arch.pkg.history[[i]]
+removeSequences <- function(dat, arch.pkg.history, delta.time = 10) {
+  pkg.history <- arch.pkg.history
+  history.obs <- nrow(pkg.history)
+  
+  if (history.obs != 0) {
+    pttrn <- paste0(pkg.history$Version, collapse = " ")
+    obs.versions <- paste0(dat$version, collapse = " ")
+    version.seq <- grepl(pttrn, obs.versions)
 
-    if (nrow(pkg.history) != 0) {
-      pkg.data$t0 <- strptime(paste(pkg.data$date, pkg.data$time),
-        "%Y-%m-%d %T", tz = "GMT")
-      pkg.data <- pkg.data[order(pkg.data$t0), ]
-
-      rle.data <- rle(pkg.data$ver)
-      rle.out <- data.frame(lengths = rle.data$lengths,
-        values = rle.data$values)
-
-      archive.obs <- pkg.history$Version %in%
-        rle.out[rle.data$lengths == 1, "values"]
-
-      if (all(archive.obs)) {
-        rle.out$idx <- seq_len(nrow(rle.out))
-        breaks <- rle.out[rle.out$lengths != 1, "idx"]
-
-        candidate.seqs <- lapply(seq_along(breaks), function(i) {
-          if (i < length(breaks)) {
-            (breaks[i] + 1):(breaks[i + 1] - 1)
-          } else if (breaks[i] < max(rle.out$idx)) {
-            (breaks[i] + 1):max(rle.out$idx)
-          } else NA
+    if (version.seq) {
+      version.id <- seq_along(pkg.history$Version)
+      dat$date.time <- dateTime(dat$date, dat$time)
+      dat <- dat[order(dat$date.time), ]
+      
+      runs <- rle(dat$version)
+      rle.data <- data.frame(ver = runs$values, length = runs$lengths)
+      
+      obs.stop <- cumsum(rle.data$length)
+      obs.start <- c(0, obs.stop[-length(obs.stop)]) + 1
+      
+      rle.data$start <- obs.start
+      rle.data$stop <- obs.stop
+      
+      # single instance sequences
+      candidates <- rle.data[rle.data$length == 1, ]
+      seq.start <- which(candidates$ver == pkg.history$Version[1])
+      seq.stop <- which(candidates$ver == pkg.history$Version[history.obs])
+      
+      if (length(seq.start) != 0 & length(seq.stop) != 0) {
+        seq.check <- vapply(seq_along(seq.start), function(i) {
+          tmp <- candidates[seq.start[i]:seq.stop[i], ]
+          # sequence may not be in version order (esp. full downloads)
+          all(sort(match(tmp$ver, pkg.history$Version)) == version.id)
+        }, logical(1L))
+        
+        if (all(seq.check)) {
+          rle.exclude <- unlist(lapply(seq_along(seq.start), function(i) {
+            seq.tmp.obs <- row.names(candidates[seq.start[i]:seq.stop[i], ])
+            start.stop <- rle.data[seq.tmp.obs, ]
+            obs.chk <- unique(unlist(start.stop[, c("start", "stop")]))
+            tmp <- dat[obs.chk, ]
+            tmp$date.time <- dateTime(tmp$date, tmp$time)
+            time.range <- range(tmp$date.time)
+            time.window <- delta.time * nrow(tmp)
+            time.range.delta <- difftime(time.range[2], time.range[1],
+              units = "sec")
+            if (time.range.delta < time.window) obs.chk
+          }))
+        
+          obs.exclude <- row.names(dat[rle.exclude, ])
+        }
+      } 
+    } else {
+      first.pkg.version <- pkg.history[1, ]$Version
+      
+      if (first.pkg.version %in% dat$version) {
+        sel <- dat$version == first.pkg.version
+        first.pkg.ip <- unique(dat[sel, ]$ip_id)
+        
+        candidate <- dat[dat$ip_id %in% first.pkg.ip, ]
+        candidate <- candidate[candidate$version %in% pkg.history$Version, ]
+        all.archive.vers <- all(pkg.history$Version %in% candidate$version)
+        
+        candidate$date.time <- dateTime(candidate$date, candidate$time)
+        candidate <- candidate[order(candidate$date.time), ]
+        
+        seq.start <- candidate[candidate$version == first.pkg.version, ]
+        
+        time.window <- delta.time * history.obs
+        
+        candidate.endpts <- lapply(seq_len(nrow(seq.start)), function(i) {
+          data.frame(alpha = seq.start[i, ]$date.time - time.window,
+                     omega = seq.start[i, ]$date.time + time.window)
         })
-
-        candidate.seqs <- candidate.seqs[!is.na(candidate.seqs)]
-
-        candidate.check <- unlist(lapply(candidate.seqs, function(sel) {
-          dat <- rle.out[sel, ]
-          elements.check <- identical(sort(dat$values), pkg.history$Version)
-          if (elements.check) {
-            t.range <- range(pkg.data[cumsum(rle.out$lengths)[sel], "t0"])
-            time.window <- download.time * nrow(dat)
-            difftime(t.range[2], t.range[1], units = "sec") < time.window
-          } else FALSE
+        
+        obs.exclude <- unlist(lapply(candidate.endpts, function(x) {
+          sel <- candidate$date.time >= x$alpha & candidate$date.time <= x$omega
+          tmp <- candidate[sel, ]
+          if (all(pkg.history$Version %in% tmp$version)) row.names(tmp)
         }))
-
-        obs.sel <- unlist(candidate.seqs[candidate.check])
-        pkg.data[cumsum(rle.out$lengths)[obs.sel], names(pkg.data) != "t0"]
       }
-    } else NULL
-  })
+    }
+
+    if (exists("obs.exclude")) {
+      out <- dat[!row.names(dat) %in% obs.exclude, ]
+    } else out <- dat
+  } else out <- dat
+  out
 }

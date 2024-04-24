@@ -5,9 +5,9 @@
 #' @param time.window Numeric. Seconds.
 #' @param multi.core Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. Mac and Unix only.
 #' @param dev.mode Logical. Development mode uses parallel::parLapply().
-#' @export
+#' @noRd
 
-tripletFilter <- function(dat, time.window = 2, multi.core = TRUE,
+tripletFilter <- function(dat, time.window = 2, multi.core = FALSE,
   dev.mode = dev.mode) {
 
   triplets.audit <- lapply(dat, function(x) {
@@ -46,7 +46,7 @@ tripletFilter <- function(dat, time.window = 2, multi.core = TRUE,
 #' @noRd
 
 identifyTriplets <- function(dat, output = "data.frame", time.window = 2,
-  time.sort = TRUE, multi.core = TRUE, dev.mode = dev.mode) {
+  time.sort = TRUE, multi.core = FALSE, dev.mode = dev.mode) {
 
   if (all(dat$size > 1000L)) {
     out <- NULL
@@ -200,14 +200,15 @@ identify_triplets <- function(v.data, time.window, time.sort) {
 timeFix <- function(potential.triplets, v.data, time.window) {
   out <- lapply(potential.triplets, function(x) {
     obs.data <- v.data[v.data$id %in% x, ]
-    obs.time <- dateTime(obs.data$date, obs.data$time)
+    obs.time <- unique(dateTime(obs.data$date, obs.data$time))
     tm.window <- c(obs.time + 1:time.window, obs.time - 1:time.window)
-    candidate.hms <- strftime(tm.window, format = "%H:%M:%S",
-      tz = "GMT")
+    candidate.hms <- strftime(tm.window, format = "%H:%M:%S", tz = "GMT")
     candidate.id <- paste0(candidate.hms, "-", obs.data$machine)
     candidate <- v.data$id %in% candidate.id
-
-    if (any(candidate) & sum(nrow(obs.data), sum(candidate)) == 3) {
+    
+    if (all(!candidate)) {
+      NULL
+    } else if (any(candidate) & sum(nrow(obs.data), sum(candidate)) == 3) {
       candidate.data <- v.data[v.data$id %in% candidate.id, ]
       minority <- which.min(c(nrow(obs.data), nrow(candidate.data)))
       if (minority == 1) {
@@ -216,7 +217,7 @@ timeFix <- function(potential.triplets, v.data, time.window) {
       } else if (minority == 2) {
         data.frame(minority = unique(candidate.data$id),
                    majority = unique(obs.data$id))
-      }
+      } 
     }
   })
   unique(do.call(rbind, out))

@@ -5,9 +5,8 @@
 \title{Tabulate package downloads by country.}
 \usage{
 countryDistribution(date = NULL, all.filters = FALSE, ip.filter = FALSE,
-  triplet.filter = FALSE, small.filter = FALSE, sequence.filter = FALSE,
-  size.filter = FALSE, memoization = TRUE, multi.core = TRUE,
-  dev.mode = FALSE)
+  small.filter = FALSE, sequence.filter = FALSE, size.filter = FALSE,
+  memoization = TRUE, multi.core = FALSE)
 }
 \arguments{
 \item{date}{Character. Date. "yyyy-mm-dd". NULL uses latest available log.}
@@ -15,8 +14,6 @@ countryDistribution(date = NULL, all.filters = FALSE, ip.filter = FALSE,
 \item{all.filters}{Logical. Master switch for filters.}
 
 \item{ip.filter}{Logical.}
-
-\item{triplet.filter}{Logical.}
 
 \item{small.filter}{Logical. TRUE filters out downloads less than 1000 bytes.}
 
@@ -27,8 +24,6 @@ countryDistribution(date = NULL, all.filters = FALSE, ip.filter = FALSE,
 \item{memoization}{Logical. Use memoization when downloading logs.}
 
 \item{multi.core}{Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. Mac and Unix only.}
-
-\item{dev.mode}{Logical. Development mode uses parallel::parLapply().}
 }
 \value{
 An R data frame.

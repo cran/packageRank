@@ -1,10 +1,91 @@
+### packageRank 0.9.0
+
+#### New Functionality
+
+- add rLog().
+- add cranPackageSize(mac.ver = "arm")
+
+#### Deprecated
+
+- remove tripletFilter() - redundant with amended sizeFilter().
+
+#### Fixes/Updates
+
+- If available, multi.core = FALSE by default in all functions.
+
+- amend/correct aggregateData(unit.observation = "week").
+- fix computeFileSizeB() for multiple size units. 
+- update cranMirrors().
+- update/set cranPackageSize(r.ver = "4.3").
+- fix argument error in packageArchive() for sizeFilter().
+- fix packageDistribution() for multiple packages.
+- add timeout fix to packages_on_CRAN(), packageArchive() and packageCRAN().
+- fix/ensure exact package name matching in packageCRAN().
+- return latest release in package_info() for packageCRAN() (n.b. pkg updates).
+- fix packageCRAN(size) and packageArchive(size).
+- fix packageHistory("R").
+- match point types in 
+  plot.cranDownloads(graphics = "ggplot2", unit.observation = "week").
+- modify removeSequences() for high volume packages.
+- fix typo/error in sequenceFilter().
+
+#### Function Changes
+
+- use previous day if today not available in cranDownloads().
+- remove non-user facing functions from NAMESPACE.
+
+- update 'ggplot2' syntax in cranDownloads() plot functions,
+  ggPlot(), gg_bioc_plot(), plot.annualDownloads(), plotDownloadsCountry(), 
+  plot.packageDistribution(), plotTopCountryCodes(), plot.weeklyDownloads() and 
+  plot.packageVersionPercent().
+
+- check internet connection in bioconductorDownloads() and bioconductorRank().
+- change "warn.msg" to "print.message" in checkPackage().
+- remove dev.mode argument from checkPackage().
+- add/set plot.countryDistribution(N = 10) for top N country domains.
+- match cranlogs::cran_downloads() behavior with duplicate packages in 
+  cranDownloads() and packageHistory().
+- add delta count and inflation unit in filteredDownloads().
+- replace ip_filter() with greedyIP() in ipFilter().
+- use only counts in greedyIP() in ipFilter().
+- compute run length encoding and candidate.data in ipFilter(campaigns = TRUE).
+- change/set ipCount(sort.count = TRUE)
+- use "file.url.date" in ipCount() and ipDownloads().
+- disable parallel code for ipFilter(campaigns = TRUE).
+- include local time with logInfo(details = TRUE).
+- check last 3 rather than last 7 logs for logInfo(details = TRUE).
+- name list elements in packageHistory().
+- set packageHistory(check.package = TRUE).
+- use "crandb_file_date" for dates in packageHistory().
+- use packageCRAN() instead of mpackages_on_CRAN() in packageHistory().
+- return empty data frame for no CRAN, no Archive in packageHistory0().
+- make packageHistory0(), packageCRAN() and packageArchive() standalone and 
+  private.
+- change plot.annualDownloads(f = 1/4).
+- add/set plot.annualDownloads(line.col = "gray") and fix outliers.
+- replace log_count argument with log.y in plot.bioconductorRank and 
+  plot.packageRank().
+- rename/set sequenceFilter(delta.time = 10).
+- add pre-flight checks to sequenceFilter() and smallFilter().
+- replace identifySequences() with removeSequences() in sequenceFilter().
+- set packageHistory(check.package = FALSE) in sequenceFilter().
+- filter out undersized downloads of past versions in sizeFilter().
+- add exception for "R" in validatePackage() and validatePackage0().
+- remove tripletFilter() code from utilities.R functions.
+
+#### Documentation
+
+- add annualDownloads() example to README.
+- add personal default plots to README.
+
+
 ### packageRank 0.8.3
 
 #### Fixes
 
 - use packageLifeFilter() only when cranDownloads(check.package = TRUE).
 - remove fix for doubled cranlogs::cran_downloads(packages %in% c(NULL, pkg))
-  counts; underlying 'cranlogs' issue #68 fixed.
+  counts; underlying 'cranlogs' issue [#68](https://github.com/r-hub/cranlogs/issues/68) fixed.
 
 #### Documentation
 
@@ -20,7 +101,7 @@
 #### Fixes
 
 - fix "doubled" cranlogs::cran_downloads(packages = "R") R application 
-  download counts in cranDownloads() from  2023-09-12 to 2023-10-02.
+  download counts in cranDownloads() from 2023-09-12 to 2023-10-02.
 - fix doubled cranlogs::cran_downloads(packages %in% c(NULL, pkg)) download
   counts in cranDownloads() from 2023-09-19 to 2023-10-01.
 - add timeout fix to checkPackage().

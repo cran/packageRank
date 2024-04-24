@@ -57,15 +57,35 @@ cranDownloads <- function(packages = NULL, when = NULL, from = NULL,
 
   if (!is.null(packages)) {
     if (!"R" %in% packages) {
-      if (check.package) packages <- checkPackage(packages, dev.mode)
+      if (check.package) packages <- checkPackage(packages)
+      
       first.published <- do.call(c, lapply(packages, function(pkg) {
-        packageHistory(pkg)[1, "Date"]
+        packageHistory(pkg, check.package = FALSE)[1, "Date"]
       }))
+      
+      # w/o checkPackage(), NAs represent missing/misspelled packages 
+      pkg.not.found <- is.na(first.published)
+      
+      if (any(pkg.not.found)) {
+        first.published <- first.published[!pkg.not.found]
+        if (!check.package) {
+          if (any(pkg.not.found)) {
+            not.found <- packages[pkg.not.found]
+            msg <- "Misspelled or not on CRAN/Archive: "
+            message(paste(msg, paste(not.found, collapse = ", ")))
+          }
+        }
+        packages <- packages[!pkg.not.found]
+      } else if (all(pkg.not.found)) {
+        stop("All packages misspelled or not on CRAN/Archive.", call. = FALSE)
+      }
+      
       if (any(first.published < first.log)) {
         first.published[first.published < first.log] <- first.log
       }
     } else {
-      first.published <- packageHistory("R")[1, "Date"]
+      r.history <- packageHistory("R", check.package = check.package)
+      first.published <- r.history[1, "Date"]
       if (first.r_log >= first.published) first.published <- first.r_log
     }
   } else first.published <- first.log
@@ -97,7 +117,14 @@ cranDownloads <- function(packages = NULL, when = NULL, from = NULL,
         packages <- packages[!end.date.test]
         first.published <- first.published[!end.date.test]
       }
-    } else end.date <- available.log
+    } else {
+      if (clogs$count != 0) {
+        end.date <- available.log
+      } else {
+        end.date <- available.log - 1
+        message("Today's 'cranlogs' results not available. Using previous.")
+      }
+    }
     if (start.date > end.date) stop('"from" must be <= "to".', call. = FALSE)
     argmnts <- list(packages = packages, from = start.date, to = end.date)
   } else if (is.null(when) & !is.null(to)) {
@@ -139,9 +166,17 @@ cranDownloads <- function(packages = NULL, when = NULL, from = NULL,
       cranlogs.data <- data.frame(date = dts, count = c(count),
         cumulative = c(cumulative), platform = plt, row.names = NULL)
     } else {
-      cumulative <- unlist(lapply(packages, function(pkg) {
-        cumsum(cranlogs.data[cranlogs.data$package == pkg, "count"])
-      }))
+      if (any(duplicated(packages))) {
+        grp <- seq_along(packages)
+        cranlogs.data$grp <- rep(grp, each = length(unique(cranlogs.data$date)))
+        cumulative <- unlist(lapply(grp, function(g) {
+          cumsum(cranlogs.data[cranlogs.data$grp == g, "count"])
+        }))
+      } else {
+        cumulative <- unlist(lapply(packages, function(pkg) {
+          cumsum(cranlogs.data[cranlogs.data$package == pkg, "count"])
+        }))
+      }
       cranlogs.data <- cbind(cranlogs.data[, c("date", "count")],
         cumulative, cranlogs.data$package)
       sel <- (ncol(cranlogs.data) - 1):ncol(cranlogs.data)
@@ -237,7 +272,7 @@ plot.cranDownloads <- function(x, statistic = "count", graphics = "auto",
   population.plot = FALSE, population.seed = as.numeric(Sys.Date()),
   multi.plot = FALSE, same.xy = TRUE, legend.location = "topleft",
   ip.legend.location = "topright", r.total = FALSE, dev.mode = FALSE,
-  unit.observation = "day", multi.core = TRUE, ...) {
+  unit.observation = "day", multi.core = FALSE, ...) {
 
   cores <- multiCore(multi.core)
 
@@ -246,7 +281,7 @@ plot.cranDownloads <- function(x, statistic = "count", graphics = "auto",
       graphics <- "base"
     } else if (length(x$packages) == 1) {
       graphics <- "base"
-    } else if (length(x$package) > 1) {
+    } else if (length(x$packages) > 1) {
       graphics <- "ggplot2"
     }
   }
@@ -310,7 +345,7 @@ plot.cranDownloads <- function(x, statistic = "count", graphics = "auto",
   obs.ct <- length(unique(x$cranlogs.data$date))
 
   if (points == "auto") {
-    if (obs.ct <= 45) points <- TRUE else points <- FALSE
+    points <- ifelse(obs.ct <= 45, TRUE, FALSE)
   } else if (is.logical(points) == FALSE) {
     stop('points must be "auto", TRUE, or FALSE.', call. = FALSE)
   }

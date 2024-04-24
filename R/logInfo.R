@@ -1,13 +1,13 @@
 #' Compute Availability, Date, Time of "Today's" Log.
 #'
 #' Also checks availability of Posit/RStudio logs and 'cranlogs' data.
+#' @param details Logical. Check available logs and results.
 #' @param tz Character. Local time zone. See OlsonNames() or use Sys.timezone().
 #' @param upload.time Character. UTC upload time for logs "hh:mm" or "hh:mm:ss".
-#' @param show.available Logical. Check available logs and results.
 #' @export
 
-logInfo <- function(tz = Sys.timezone(), upload.time = "17:00", 
-  show.available = FALSE) {
+logInfo <- function(details = FALSE, tz = Sys.timezone(), 
+  upload.time = "17:00") {
 
   if (!curl::has_internet()) stop("Check internet connection.", call. = FALSE)
   utc.date.time <- utc()
@@ -46,20 +46,24 @@ logInfo <- function(tz = Sys.timezone(), upload.time = "17:00",
   } else if (!rstudio.server.available & cranlogs.server.available) {
     status <- "Posit/RStudio server unavailable."
   }
+
+  date.fmt <- "%d %b %H:%M %Z"
   
   if (rstudio.server.available & cranlogs.server.available) {
     if (rstudio.results.available & cranlogs.results.available) {
       status <- "Everything OK." 
     } else if (rstudio.results.available & !cranlogs.results.available) {
-      status <- paste0("'cranlogs' usually posts a bit after ",
-                       format(as.POSIXlt(upload.utc, tz = tz), "%H:%M %Z"), 
-                       " (",
-                       format(upload.utc, "%d %b %H:%M %Z"), ").")
+      if (format(currentTime(tz = "US/Eastern"), "%Z") == "EST") {
+        upload.utc <- upload.utc + 3600L
+      }
+      # status <- paste0("'cranlogs' usually posts by ",
+      #   format(as.POSIXlt(upload.utc, tz = tz), date.fmt), " -- ",
+      #   format(upload.utc, date.fmt), ".")
+      status <- "'cranlogs' results not (yet) available."
     } else if (!rstudio.results.available) {
-      status <- paste0("Today's log is typically posted by ",
-                       format(as.POSIXlt(upload.utc, tz = tz), "%H:%M %Z"), 
-                       " (",
-                       format(upload.utc, "%d %b %H:%M %Z"), ").")
+      status <- paste0("Today's log usually posts by ",
+        format(as.POSIXlt(upload.utc, tz = tz), date.fmt), " -- ",
+        format(upload.utc, date.fmt), ".")
     }
   }
   
@@ -68,11 +72,12 @@ logInfo <- function(tz = Sys.timezone(), upload.time = "17:00",
   
   out <- list("Today's log/result" = today.log,
               "Today's log on Posit/RStudio?" = rstudio.status,
-              "Today's results on 'cranlogs'?" = cranlogs.status,
+              "Today's result on 'cranlogs'?" = cranlogs.status,
               status = status)
-
-  if (show.available) {
-    rev.last.wk <- seq(utc.date - 1, utc.date - 8, by = -1)
+  
+  if (details) {
+    omega <- 4
+    rev.last.wk <- seq(utc.date - 1, utc.date - omega, by = -1)
     
     last.available <- vapply(rev.last.wk, function(x) {
       tmp.url <- paste0(rstudio.url, year, '/', x, ".csv.gz")
@@ -81,8 +86,8 @@ logInfo <- function(tz = Sys.timezone(), upload.time = "17:00",
     
     rstudio.last.available <- rev.last.wk[last.available][1]
     
-    cranlogs.available <- try(cranlogs::cran_downloads(from = rev.last.wk[8],
-      to = rev.last.wk[1]), silent = TRUE)
+    cranlogs.available <- try(cranlogs::cran_downloads(from = 
+      rev.last.wk[omega], to = rev.last.wk[1]), silent = TRUE)
     if (any(class(cranlogs.available) == "try-error")) {
       cran.last.available <- NA
     } else {
@@ -97,6 +102,7 @@ logInfo <- function(tz = Sys.timezone(), upload.time = "17:00",
                 "Today's log on Posit/RStudio?" = rstudio.status,
                 "Today's results on 'cranlogs'?" = cranlogs.status,
                 "Available log/result" = note,
+                "Current date-time" = paste0(format(Sys.time(), date.fmt)),
                 status = status)
   }
   out

@@ -2,11 +2,14 @@
 #'
 #' Package name, version and date of publication.
 #' @return An R data frame.
-#' @export
+#' @noRd
 
 packages_on_CRAN <- function() {
+  orig.timeout <- getOption("timeout")
+  if (orig.timeout < 600L) options(timeout = 600L)
   pkg.data <- tools::CRAN_package_db()
   vars <- c("Package", "Version", "Published")
+  options(timeout = orig.timeout)
   pkg.data[!duplicated(pkg.data$Package), vars] # N.B. duplicated()!
 }
 
@@ -17,9 +20,9 @@ mpackages_on_CRAN <- memoise::memoise(packages_on_CRAN)
 #' Include inactive (retired) packages and previous versions of active packages.
 #' @param multi.core Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. See \code{vignette("Parallelization")} for details.
 #' @return An R vector.
-#' @export
+#' @noRd
 
-packages_in_Archive <- function(multi.core = TRUE) {
+packages_in_Archive <- function(multi.core = FALSE) {
   cores <- multiCore(multi.core)
   root.url <- "https://cran.r-project.org/src/contrib/Archive/"
   web_page <- mreadLines(root.url)
@@ -35,7 +38,7 @@ packages_in_Archive <- function(multi.core = TRUE) {
 #'
 #' @param date Character. Date. "yyyy-mm-dd". NULL uses latest available log.
 #' @return An R vector.
-#' @export
+#' @noRd
 
 packages_observed_in_logs <- function(date = NULL) {
   file.url.date <- logDate(date)
@@ -50,10 +53,10 @@ packages_observed_in_logs <- function(date = NULL) {
 #' @param observed.downloads Logical. Compute current observed package downloads.
 #' @param multi.core Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. See \code{vignette("Parallelization")} for details.
 #' @return An R list.
-#' @export
+#' @noRd
 
 packages_partitioned <- function(observed.downloads = FALSE, 
-  multi.core = TRUE) {
+  multi.core = FALSE) {
   
   cores <- multiCore(multi.core)
 
@@ -88,7 +91,7 @@ mpackages_partitioned <- memoise::memoise(packages_partitioned)
 #' Date a package is moved to Archive (if available).
 #' @param package Character. Package name.
 #' @return An R data frame.
-#' @export
+#' @noRd
 
 extractArchiveDate <- function(package) {
   url <- "https://cran.r-project.org/web/packages/"

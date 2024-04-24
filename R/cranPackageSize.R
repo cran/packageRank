@@ -5,13 +5,15 @@
 #' @param check.package Logical. Validate and "spell check" package.
 #' @param size Logical. Include size of source file.
 #' @param r.ver Character. Current R version; used in directory path.
+#' @param mac.ver Character. Processor.
 #' @param bytes Logical. Compute approximate file size (bytes).
 #' @param multi.core Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. Mac and Unix only.
 #' @return An R data frame or NULL.
 #' @noRd
 
 cranPackageSize <- function(package = "cholera", check.package = FALSE,
-  size = TRUE, r.ver = "4.0", bytes = TRUE, multi.core = TRUE) {
+  size = TRUE, r.ver = "4.4",  mac.ver = "arm", bytes = TRUE, 
+  multi.core = FALSE) {
 
   # R default is 60
   orig.timeout <- getOption("timeout")
@@ -20,7 +22,13 @@ cranPackageSize <- function(package = "cholera", check.package = FALSE,
   if (check.package) package <- checkPackage(package)
   cores <- multiCore(multi.core)
   root.url <- "https://cran.r-project.org/"
-  mac.url.suffix <- paste0("bin/macosx/contrib/", r.ver, "/")
+  
+  if (mac.ver == "arm") {
+    mac.url.suffix <- paste0("bin/macosx/big-sur-arm64/contrib/", r.ver, "/")
+  } else if (mac.ver == "intel") {
+    mac.url.suffix <- paste0("bin/macosx/big-sur-x86_64/contrib/", r.ver, "/")
+  } else stop('mac.ver must be "arm" or "intel".')
+  
   win.url.suffix <- paste0("bin/windows/contrib/", r.ver, "/")
 
   src <- data.frame(ext = ".tar.gz", url = paste0(root.url, "/src/contrib"))
@@ -66,7 +74,7 @@ cranPackageSize <- function(package = "cholera", check.package = FALSE,
   out <- do.call(rbind, out)
   out$type <- row.names(out)
   row.names(out) <- NULL
-  if (bytes) out$bytes <- computeFileSize(out$size)
+  if (bytes) out$bytes <- computeFileSizeB(out$size)
   out
 }
 
@@ -82,13 +90,14 @@ cran_package_info <- function(pkg.data, ext, repository = "CRAN") {
              stringsAsFactors = FALSE)
 }
 
-computeFileSize <- function(x) {
+computeFileSizeB <- function(x) {
   kB.test <- grepl("K", x)
   MB.test <- grepl("M", x)
   out <- rep(NA, length(x))
   if (any(kB.test)) {
     out[kB.test] <- as.numeric(unlist(strsplit(x[kB.test], "K"))) * 10^3
-  } else if (any(MB.test)) {
+  }
+  if (any(MB.test)) {
     out[MB.test] <- as.numeric(unlist(strsplit(x[MB.test], "M"))) * 10^6
   }
   out

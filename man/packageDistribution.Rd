@@ -6,8 +6,7 @@
 \usage{
 packageDistribution(package = "HistData", date = NULL,
   all.filters = FALSE, ip.filter = FALSE, small.filter = FALSE,
-  memoization = TRUE, check.package = TRUE, multi.core = TRUE,
-  dev.mode = FALSE, threshold = 1000L)
+  memoization = TRUE, check.package = TRUE, multi.core = FALSE)
 }
 \arguments{
 \item{package}{Character. Vector of package name(s).}
@@ -25,10 +24,6 @@ packageDistribution(package = "HistData", date = NULL,
 \item{check.package}{Logical. Validate and "spell check" package.}
 
 \item{multi.core}{Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. Mac and Unix only.}
-
-\item{dev.mode}{Logical. Development mode uses parallel::parLapply().}
-
-\item{threshold}{Numeric. Threshold for small.filter in Bytes.}
 }
 \description{
 Package Download Distribution.

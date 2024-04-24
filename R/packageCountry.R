@@ -5,8 +5,7 @@
 #' @param date Character. Date. "yyyy-mm-dd". NULL uses latest available log.
 #' @param all.filters Logical. Master switch for filters.
 #' @param ip.filter Logical.
-#' @param triplet.filter Logical.
-#' @param small.filter Logical.
+#' @param small.filter Logical. TRUE filters out downloads less than 1000 bytes.
 #' @param sequence.filter Logical.
 #' @param size.filter Logical.
 #' @param sort Logical. Sort by download count.
@@ -14,28 +13,25 @@
 #' @param memoization Logical. Use memoization when downloading logs.
 #' @param check.package Logical. Validate and "spell check" package.
 #' @param multi.core Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. Mac and Unix only.
-#' @param dev.mode Logical. Development mode uses parallel::parLapply().
 #' @export
 
 packageCountry <- function(packages = "cholera", date = NULL,
-  all.filters = FALSE, ip.filter = FALSE, triplet.filter = FALSE,
-  small.filter = FALSE, sequence.filter = FALSE, size.filter = FALSE,
-  sort = TRUE, na.rm = FALSE, memoization = TRUE, check.package = TRUE,
-  multi.core = TRUE, dev.mode = FALSE) {
+  all.filters = FALSE, ip.filter = FALSE, small.filter = FALSE, 
+  sequence.filter = FALSE, size.filter = FALSE, sort = TRUE, na.rm = FALSE,
+  memoization = TRUE, check.package = TRUE, multi.core = FALSE) {
 
   if (all.filters) {
     ip.filter <- TRUE
-    triplet.filter <- TRUE
     small.filter <- TRUE
     sequence.filter <- TRUE
     size.filter <- TRUE
   }
 
   p.log <- packageLog(packages = packages, date = date,
-    ip.filter = ip.filter, triplet.filter = triplet.filter,
-    small.filter = small.filter, sequence.filter = sequence.filter,
-    size.filter = size.filter, memoization = memoization,
-    check.package = check.package, multi.core = TRUE, dev.mode = FALSE)
+    ip.filter = ip.filter, small.filter = small.filter, 
+    sequence.filter = sequence.filter, size.filter = size.filter, 
+    memoization = memoization, check.package = check.package, 
+    multi.core = FALSE)
 
   if (na.rm) {
     if (is.data.frame(p.log)) {

@@ -5,10 +5,9 @@
 \title{Package download counts by country.}
 \usage{
 packageCountry(packages = "cholera", date = NULL, all.filters = FALSE,
-  ip.filter = FALSE, triplet.filter = FALSE, small.filter = FALSE,
-  sequence.filter = FALSE, size.filter = FALSE, sort = TRUE,
-  na.rm = FALSE, memoization = TRUE, check.package = TRUE,
-  multi.core = TRUE, dev.mode = FALSE)
+  ip.filter = FALSE, small.filter = FALSE, sequence.filter = FALSE,
+  size.filter = FALSE, sort = TRUE, na.rm = FALSE, memoization = TRUE,
+  check.package = TRUE, multi.core = FALSE)
 }
 \arguments{
 \item{packages}{Character. Vector of package name(s).}
@@ -19,9 +18,7 @@ packageCountry(packages = "cholera", date = NULL, all.filters = FALSE,
 
 \item{ip.filter}{Logical.}
 
-\item{triplet.filter}{Logical.}
-
-\item{small.filter}{Logical.}
+\item{small.filter}{Logical. TRUE filters out downloads less than 1000 bytes.}
 
 \item{sequence.filter}{Logical.}
 
@@ -36,8 +33,6 @@ packageCountry(packages = "cholera", date = NULL, all.filters = FALSE,
 \item{check.package}{Logical. Validate and "spell check" package.}
 
 \item{multi.core}{Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. Mac and Unix only.}
-
-\item{dev.mode}{Logical. Development mode uses parallel::parLapply().}
 }
 \description{
 From RStudio's CRAN Mirror http://cran-logs.rstudio.com/

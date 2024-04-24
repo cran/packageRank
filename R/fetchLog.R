@@ -3,7 +3,7 @@
 #' @param date Character. Date. yyyy-mm-dd.
 #' @param memoization Logical. Use memoization when downloading logs.
 #' @param dev.mode Logical. Use Base R code.
-#' @export
+#' @noRd
 
 fetchCranLog <- function(date, memoization = FALSE, dev.mode = FALSE) {
   year <- as.POSIXlt(date)$year + 1900
@@ -35,7 +35,8 @@ fetchCranLog <- function(date, memoization = FALSE, dev.mode = FALSE) {
 #' fread() to data.frame.
 #'
 #' @param x Character. URL.
-#' @import data.table memoise
+#' @import memoise
+#' @importFrom data.table fread
 #' @importFrom R.utils decompressFile
 #' @note mfetchLog() is memoized version.
 #' @noRd

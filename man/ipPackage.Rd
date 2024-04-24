@@ -5,12 +5,11 @@
 \title{Tabulate an IP's package downloads.}
 \usage{
 ipPackage(ip = 10, date = NULL, all.filters = FALSE, ip.filter = FALSE,
-  triplet.filter = FALSE, small.filter = FALSE, sequence.filter = FALSE,
-  size.filter = FALSE, sort = TRUE, memoization = TRUE,
-  multi.core = TRUE, dev.mode = FALSE)
+  small.filter = FALSE, sequence.filter = FALSE, size.filter = FALSE,
+  sort.count = TRUE, memoization = TRUE, multi.core = FALSE)
 }
 \arguments{
-\item{ip}{Numeric. ip_id.}
+\item{ip}{Numeric. ip_id. Positive integer.}
 
 \item{date}{Character. Date. "yyyy-mm-dd". NULL uses latest available log.}
 
@@ -18,21 +17,17 @@ ipPackage(ip = 10, date = NULL, all.filters = FALSE, ip.filter = FALSE,
 
 \item{ip.filter}{Logical.}
 
-\item{triplet.filter}{Logical.}
-
 \item{small.filter}{Logical. TRUE filters out downloads less than 1000 bytes.}
 
 \item{sequence.filter}{Logical.}
 
 \item{size.filter}{Logical.}
 
-\item{sort}{Logical. Sort by download count.}
+\item{sort.count}{Logical. Sort by download count.}
 
 \item{memoization}{Logical. Use memoization when downloading logs.}
 
 \item{multi.core}{Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. Mac and Unix only.}
-
-\item{dev.mode}{Logical. Development mode uses parallel::parLapply().}
 }
 \description{
 From RStudio's CRAN Mirror http://cran-logs.rstudio.com/

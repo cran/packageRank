@@ -9,8 +9,6 @@
 #' @param memoization Logical. Use memoization when downloading logs.
 #' @param check.package Logical. Validate and "spell check" package.
 #' @param multi.core Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. Mac and Unix only.
-#' @param dev.mode Logical. Development mode uses parallel::parLapply().
-#' @param threshold Numeric. Threshold for small.filter in Bytes.
 #' @return An R data frame.
 #' @export
 #' @examples
@@ -21,29 +19,27 @@
 
 packageRank <- function(packages = "HistData", date = NULL,
   all.filters = FALSE, ip.filter = FALSE, small.filter = FALSE,
-  memoization = TRUE, check.package = TRUE, multi.core = TRUE,
-  dev.mode = FALSE, threshold = 1000L) {
+  memoization = TRUE, check.package = TRUE, multi.core = FALSE) {
 
   if (!curl::has_internet()) stop("Check internet connection.", call. = FALSE)
+
+  cores <- multiCore(multi.core)
+  if (.Platform$OS.type == "windows" & cores > 1) cores <- 1L
+
   if (check.package) packages <- checkPackage(packages)
   file.url.date <- logDate(date)
   cran_log <- fetchCranLog(date = file.url.date, memoization = memoization)
   cran_log <- cleanLog(cran_log)
-
   ymd <- rev_fixDate_2012(file.url.date)
-  cores <- multiCore(multi.core)
-
+  
   if (all.filters) {
     ip.filter <- TRUE
     small.filter <- TRUE
   }
 
-  if (ip.filter) {
-    cran_log <- ipFilter(cran_log, multi.core = cores, dev.mode = dev.mode)
-  }
-
-  if (small.filter) cran_log <- cran_log[cran_log$size >= threshold, ]
-
+  if (small.filter) cran_log <- smallFilter(cran_log)
+  if (ip.filter) cran_log <- ipFilter(cran_log, multi.core = cores)
+  
   freqtab <- sort(table(cran_log$package), decreasing = TRUE)
 
   unobs.pkgs <- !packages %in% cran_log$package
@@ -57,9 +53,7 @@ packageRank <- function(packages = "HistData", date = NULL,
   }
 
   # packages in bin
-  pkg.bin <- lapply(packages, function(nm) {
-    freqtab[freqtab %in% freqtab[nm]]
-  })
+  pkg.bin <- lapply(packages, function(nm) freqtab[freqtab %in% freqtab[nm]])
 
   # offset: ties arbitrarily broken by alphabetical order
   pkg.bin.delta <- vapply(seq_along(pkg.bin), function(i) {
@@ -96,7 +90,7 @@ packageRank <- function(packages = "HistData", date = NULL,
 #' Plot method for packageRank() and packageRank0().
 #' @param x An object of class "packageRank" created by \code{packageRank()}.
 #' @param graphics Character. "base" or "ggplot2".
-#' @param log_count Logical. Logarithm of package downloads.
+#' @param log.y Logical. Logarithm of package downloads.
 #' @param ... Additional plotting parameters.
 #' @return A base R or ggplot2 plot.
 #' @export
@@ -106,8 +100,8 @@ packageRank <- function(packages = "HistData", date = NULL,
 #' plot(packageRank(packages = c("h2o", "Rcpp", "rstan"), date = "2020-01-01"))
 #' }
 
-plot.packageRank <- function(x, graphics = NULL, log_count = TRUE, ...) {
-  if (is.logical(log_count) == FALSE) stop("log_count must be TRUE or FALSE.")
+plot.packageRank <- function(x, graphics = NULL, log.y = TRUE, ...) {
+  if (is.logical(log.y) == FALSE) stop("log.y must be TRUE or FALSE.")
 
   freqtab <- x$freqtab
   package.data <- x$package.data
@@ -123,26 +117,26 @@ plot.packageRank <- function(x, graphics = NULL, log_count = TRUE, ...) {
 
   if (is.null(graphics)) {
     if (length(packages) == 1) {
-      basePlot(packages, log_count, freqtab, iqr, package.data, y.max, date)
+      basePlot(packages, log.y, freqtab, iqr, package.data, y.max, date)
     } else if (length(packages) > 1) {
-      ggPlot(x, log_count, freqtab, iqr, package.data, y.max, date)
+      ggPlot(x, log.y, freqtab, iqr, package.data, y.max, date)
     } else stop("Error.")
   } else if (graphics == "base") {
     if (length(packages) > 1) {
       invisible(lapply(packages, function(pkg) {
-        basePlot(pkg, log_count, freqtab, iqr, package.data, y.max, date)
+        basePlot(pkg, log.y, freqtab, iqr, package.data, y.max, date)
       }))
     } else {
-      basePlot(packages, log_count, freqtab, iqr, package.data, y.max, date)
+      basePlot(packages, log.y, freqtab, iqr, package.data, y.max, date)
     }
   } else if (graphics == "ggplot2") {
-    ggPlot(x, log_count, freqtab, iqr, package.data, y.max, date)
+    ggPlot(x, log.y, freqtab, iqr, package.data, y.max, date)
   } else stop('graphics must be "base" or "ggplot2"')
 }
 
 #' Base R Graphics Plot.
 #' @param pkg Object.
-#' @param log_count Logical. Logarithm of package downloads.
+#' @param log.y Logical. Logarithm of package downloads.
 #' @param freqtab Object.
 #' @param iqr Object.
 #' @param package.data Object.
@@ -150,8 +144,8 @@ plot.packageRank <- function(x, graphics = NULL, log_count = TRUE, ...) {
 #' @param date Character.
 #' @noRd
 
-basePlot <- function(pkg, log_count, freqtab, iqr, package.data, y.max, date) {
-  if (log_count) {
+basePlot <- function(pkg, log.y, freqtab, iqr, package.data, y.max, date) {
+  if (log.y) {
     plot(c(freqtab), type = "l", xlab = "Rank", ylab = "log10(Count)",
       log = "y")
   } else {
@@ -161,7 +155,7 @@ basePlot <- function(pkg, log_count, freqtab, iqr, package.data, y.max, date) {
   abline(v = iqr, col = "gray", lty = "dotted")
   iqr.labels <- c("75th", "50th", "25th")
 
-  if (log_count) {
+  if (log.y) {
     invisible(lapply(seq_along(iqr), function(i) {
       text(iqr[[i]], y.max / 2, labels = iqr.labels[i], cex = 0.75)
     }))
@@ -201,15 +195,16 @@ basePlot <- function(pkg, log_count, freqtab, iqr, package.data, y.max, date) {
 
 #' ggplot2 Graphics Plot.
 #' @param x Object.
-#' @param log_count Logical. Logarithm of package downloads.
+#' @param log.y Logical. Logarithm of package downloads.
 #' @param freqtab Object.
 #' @param iqr Object.
 #' @param package.data Object.
 #' @param y.max Numeric.
 #' @param date Character.
+#' @importFrom ggplot2 geom_label geom_vline
 #' @noRd
 
-ggPlot <- function(x, log_count, freqtab, iqr, package.data, y.max, date) {
+ggPlot <- function(x, log.y, freqtab, iqr, package.data, y.max, date) {
   package.data <- x$package.data
   packages <- x$packages
 
@@ -228,13 +223,10 @@ ggPlot <- function(x, log_count, freqtab, iqr, package.data, y.max, date) {
 
   download.lst <- rep(list(download.data), length(x$packages))
 
-  for (i in seq_along(download.lst)) {
-    download.lst[[i]]$id <- id[i]
-  }
-
+  for (i in seq_along(download.lst)) download.lst[[i]]$id <- id[i]
+  
   download.data <- do.call(rbind, download.lst)
-  first <- cumsum(vapply(download.lst, nrow, numeric(1L))) -
-    length(freqtab) + 1
+  first <- cumsum(vapply(download.lst, nrow, numeric(1L))) - length(freqtab) + 1
   last <- sum(vapply(download.lst, nrow, numeric(1L)))
   iqr.labels <- c("75th", "50th", "25th")
   iqr.data <- data.frame(x = rep(iqr, length(x$packages)),
@@ -266,43 +258,49 @@ ggPlot <- function(x, log_count, freqtab, iqr, package.data, y.max, date) {
 
   alpha.col <- grDevices::adjustcolor("red", alpha.f = 2/3)
 
-  p <- ggplot(data = download.data, aes_string("x", "y")) +
-       geom_line() +
-       geom_vline(xintercept = iqr, colour = "gray", linetype = "dotted") +
-       geom_point(data = download.data[first, ],
-                  shape = 1,
-                  colour = "dodgerblue") +
-       geom_text(data = download.data[first, ],
-                 colour = "dodgerblue",
-                 label = top.pkg,
-                 hjust = -0.1,
-                 size = 3) +
-       geom_text(data = data.frame(x = download.data[last, "x"], y = y.max),
-                 colour = "dodgerblue",
-                 label = tot.dwnld,
-                 hjust = 1,
-                 size = 3) +
-       geom_text(data = iqr.data, label = iqr.data$label) +
-       geom_vline(data = point.data, aes_string(xintercept = "x"),
-                  colour = alpha.col) +
-       geom_hline(data = point.data, aes_string(yintercept = "y"),
-                  colour = alpha.col) +
-       geom_point(data = point.data, aes_string("x", "y"), shape = 1,
-                  colour = "red", size = 2) +
-       geom_label(data = point.data, aes_string("x", "y"),
-                  fill = alpha.col, colour = "white", size = label.size,
-                  label = ylabel, nudge_x = 2000) +
-       geom_label(data = point.data, aes_string("x", "y"),
-                  fill = alpha.col, colour = "white", size = label.size,
-                  label = xlabel, nudge_y = ylabel.nudge) +
-       xlab("Rank") +
-       ylab("Count") +
-       facet_wrap(~ id, nrow = 2) +
-       theme_bw() +
-       theme(panel.grid.major = element_blank(),
-             panel.grid.minor = element_blank())
+  geom.text.data <- data.frame(x = download.data[last, "x"], y = y.max)
 
-  if (log_count) p + scale_y_log10() else p
+  p <- ggplot2::ggplot(data = download.data, 
+         ggplot2::aes(x = .data$x, y = .data$y)) +
+       ggplot2::geom_line() +
+       ggplot2::geom_vline(xintercept = iqr, colour = "gray", 
+        linetype = "dotted") +
+       ggplot2::geom_point(data = download.data[first, ],
+                           shape = 1,
+                           colour = "dodgerblue") +
+       ggplot2::geom_text(data = download.data[first, ],
+                          colour = "dodgerblue",
+                          label = top.pkg,
+                          hjust = -0.1,
+                          size = 3) +
+       ggplot2::geom_text(data = geom.text.data,
+                          colour = "dodgerblue",
+                          label = tot.dwnld,
+                          hjust = 1,
+                          size = 3) +
+       ggplot2::geom_text(data = iqr.data, label = iqr.data$label) +
+       ggplot2::geom_vline(data = point.data,
+         ggplot2::aes(xintercept = .data$x), colour = alpha.col) +
+       ggplot2::geom_hline(data = point.data, 
+         ggplot2::aes(yintercept = .data$y), colour = alpha.col) +
+       ggplot2::geom_point(data = point.data, 
+         ggplot2::aes(x = .data$x, y = .data$y), shape = 1, colour = "red", 
+           size = 2) +
+       ggplot2::geom_label(data = point.data, 
+         ggplot2::aes(x = .data$x, y = .data$y), fill = alpha.col, 
+           colour = "white", size = label.size, label = ylabel, nudge_x = 2000) +
+       ggplot2::geom_label(data = point.data, 
+          ggplot2::aes(x = .data$x, y = .data$y), fill = alpha.col, 
+            colour = "white", size = label.size, label = xlabel, 
+            nudge_y = ylabel.nudge) +
+       ggplot2::xlab("Rank") +
+       ggplot2::ylab("Count") +
+       ggplot2::facet_wrap(ggplot2::vars(.data$id), nrow = 2) +
+       ggplot2::theme_bw() +
+       ggplot2::theme(panel.grid.major = ggplot2::element_blank(),
+                      panel.grid.minor = ggplot2::element_blank())
+
+  if (log.y) p + ggplot2::scale_y_log10() else p
 }
 
 #' Print method for packageRank().

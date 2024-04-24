@@ -5,26 +5,26 @@
 #' @param bytes Logical. Compute approximate numeric file size in bytes.
 #' @param multi.core Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. Mac and Unix only.
 #' @return An R data frame.
-#' @export
+#' @noRd
 
-cranPackages <- function(binary = FALSE, bytes = FALSE, multi.core = TRUE) {
+cranPackages <- function(binary = FALSE, bytes = FALSE, multi.core = FALSE) {
   cores <- multiCore(multi.core)
   dat <- getData(code = "source", cores)
   if (binary) dat <- getBinaryData(dat, cores)
   if (bytes) {
     if("size" %in% names(dat)) {
-      dat$bytes <- computeFileSize(dat$size)
+      dat$bytes <- computeFileSizeA(dat$size)
     } else if (all(c("source", "mac", "win") %in% names(dat))) {
       for (nm in c("source", "mac", "win")) {
         dat[, paste0(nm, ".B")] <- NA
-        dat[, paste0(nm, ".B")] <- computeFileSize(dat[, nm])
+        dat[, paste0(nm, ".B")] <- computeFileSizeA(dat[, nm])
       }
     }
   }
   dat
 }
 
-computeFileSize <- function(x) {
+computeFileSizeA <- function(x) {
   kB.id <- grepl("K", x)
   MB.id <- grepl("M", x)
   kB <- as.numeric(unlist(strsplit(x[kB.id], "K"))) * 10^3
