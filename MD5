@@ -1,6 +1,6 @@
-239bb0dc62bebf0c83ded6005d398ce0 *DESCRIPTION
+2be3ab06c22f84cffe13a033f65b9ee4 *DESCRIPTION
 e17bbde53243f31b0cad661b80b2ea8e *NAMESPACE
-dcdd3c00d14582348bdb94c5d5555df4 *NEWS.md
+10675011d164e174c5e255a30ffcacf5 *NEWS.md
 134365b304703b6280d33aa6194467b8 *R/annualDownloads.R
 3ae63c6bb278d03714141ba314731365 *R/archivePackages.R
 2be5f753270b7faa8d64d84b0a2e4325 *R/bioconductorDownloads.R
@@ -10,11 +10,13 @@ c3e9499ed61d3a5ba35c5992411a0219 *R/checkPackage.R
 9282739c285e89e33e13722f540bc1fd *R/countryDistribution.R
 54800f92608d437aee5baa3f64d0c4bf *R/countryPackage.R
 c043b132b17e50c7b0bce93284548a4c *R/countsRanks.R
-abe3194caa91e91cb0163e5a58c0c978 *R/cranDownloads.R
+52cc3a3b40d4de8f77e0340db1fe3e95 *R/cranDownloads.R
+43ba1632179485c382e9c0fcefb0e10f *R/cranDownloadsA.R
+02f91b71c8d642f0977543db9a91780a *R/cranDownloadsB.R
 55df424d2fba9bf3ee45f20d925eea27 *R/cranDownloadsPlotAuxilliary.R
-73a75d10d9dc51adc69b7606286067c0 *R/cranDownloadsPlotFunctions.R
-e9eca5bb6b074d5a5515fb481613d7eb *R/cranDownloadsPlotSmoother.R
-2c7dca1ea702b9842d05369924c50a33 *R/cranMirrors.R
+aed483e63eb19dec0fe9afb4fdce096f *R/cranDownloadsPlotFunctions.R
+e15069cf422d11997ebfa0ec7fb9bfee *R/cranDownloadsPlotSmoother.R
+9581b248f0cf73a55e2b42e12f6eb492 *R/cranMirrors.R
 43d96af5c7ebfea2a8f2147e7cd03358 *R/cranPackageSize.R
 dd2fdfbdcba1e6a04a214858d2214340 *R/cranPackages.R
 e3ea1989f22eb896a7bb41f2520f3beb *R/data.R
@@ -46,7 +48,7 @@ d924e3d43c711b0bbd6efe05334fbb85 *R/packageVersionPercent.R
 7b81eeb8a54bc57d5e20f138d63f8581 *R/packagesFunctions.R
 bf6cc868f02cecfe3fa0a0e3dc2a217d *R/populationPlot.R
 7a931d696766c76ce6238fddd6a56435 *R/rLog.R
-69fbb4c8ae3e8a92e58b608064b3005c *R/resolveDate.R
+00e054a4abdd094a3da47ba0b6632700 *R/resolveDate.R
 bbc035c797783e417a154eabda5bdd80 *R/sequenceFilter.R
 7569af07df4f9a58dc0254166592948f *R/sizeFilter.R
 29fc97d04b99f6f0f3bf28f76c61ba5b *R/smallFilter.R
@@ -57,7 +59,7 @@ bbc035c797783e417a154eabda5bdd80 *R/sequenceFilter.R
 7c389b40f343a8572f6c5bff4522cd1d *R/validatePackage.R
 d5b47786f007a1f87e313b4469a56695 *R/versionPlot.R
 116723f645f3c6896f2cac93ae7da381 *R/weeklyDownloads.R
-102f25d1f05224e9a19b80da076f2b54 *README.md
+03be61560a5be3473f3c9154f5376983 *README.md
 6dbcd458349f6cadc45915643e4b8bd8 *data/blog.data.rda
 e8d683fcaa35c59d07a3f6c98291bfa9 *data/rstudio.logs.rda
 c2e0bade74f8d6766e247e679077e932 *man/annualDownloads.Rd
@@ -67,7 +69,7 @@ c2e0bade74f8d6766e247e679077e932 *man/annualDownloads.Rd
 6285ff1cdfb16b5c6dd6ecb9bf36e650 *man/countryDistribution.Rd
 2b1f200d648b9856a94043fad90ebe64 *man/countryPackage.Rd
 04d3526ddcee9a479cf3167bed547d6e *man/countsRanks.Rd
-ea5496cae564f52a928a529a50adb602 *man/cranDownloads.Rd
+193855766cc7309acdaf8355bc62b608 *man/cranDownloads.Rd
 c75c7a034099ebaad5556b5258b04d6a *man/cranInflationPlot.Rd
 5e37ebfaeb10836436caad5c6e39efc1 *man/cranMirrors.Rd
 0d2231a2a5483e899cbe67bdce664f81 *man/currentTime.Rd
@@ -85,6 +87,7 @@ e3f12a50fa3fab763827bd44bcc294e3 *man/figures/README-log_count-1.png
 ee4de41a228fabcc3e9a3d8d54c4789c *man/figures/README-month-1.png
 5ef87630450a286ba5d3adcdf1da8bc8 *man/figures/README-motivation_code-1.png
 f71730d51d5b77c5d8cb2e9dcb92cc32 *man/figures/README-motivation_cran-1.png
+2dc2f880a1df2706f3416929b78cae24 *man/figures/README-non_pro_mode_plot-1.png
 5a4f29f44c315ca80b58a115a9b29c0c *man/figures/README-null_packages-1.png
 ca3a04a1825ec6b57cddf3b3ad8fa4f8 *man/figures/README-packageDistribution_sat_code-1.png
 d584dfba8f196a02f9927d446cd1f023 *man/figures/README-packageDistribution_wed_code-1.png
@@ -92,6 +95,7 @@ af1c252ba38f53baaaf9775f363050a2 *man/figures/README-packageRank_plot_code_sat-1
 977f90b0b6e05283d360c0ef246e1a53 *man/figures/README-packageRank_plot_code_wed-1.png
 cc7d8feaf53b331b51c2e0ddfb62a7b5 *man/figures/README-pkg_release_date-1.png
 de0a0acbcccac95a57dcd73e43e772ef *man/figures/README-pop_plot_code-1.png
+6af61e98e8e078f72bdcab919aadfcb1 *man/figures/README-pro_mode_plot-1.png
 8114b31fe562425960ae58c0d42f4af3 *man/figures/README-r_downloads-1.png
 85be732dcec9e8e755e343a1fa6881dd *man/figures/README-r_release_date-1.png
 6ad37d01c20c8c88118303f969d3688c *man/figures/README-sundays-1.png

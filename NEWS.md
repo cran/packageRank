@@ -1,9 +1,34 @@
+### packageRank 0.9.1
+
+#### New Functionality
+
+- add/set cranDownloads(pro.mode = FALSE).
+
+#### Fixes/Updates
+
+- update cranMirrors().
+- fix cranDownloads(to = NULL).
+- fix dayOfMonth(end.of.month = TRUE).
+- fix plot(cranDownloads(pkg, when = "last-month"), unit.observation = "week", 
+  smooth = TRUE).
+- fix smoothWeekData() call in addSmoother()
+
+#### Plot Changes
+
+- use title case for axes labels.
+- contextualize smoother subtitle in plot.cranDownloads(graphics = "base").
+
+#### Documentation
+
+- amend discussion of smoother parameters (loess as "default") in README.
+
+
 ### packageRank 0.9.0
 
 #### New Functionality
 
 - add rLog().
-- add cranPackageSize(mac.ver = "arm")
+- add cranPackageSize(mac.ver = "arm").
 
 #### Deprecated
 
@@ -49,7 +74,7 @@
 - replace ip_filter() with greedyIP() in ipFilter().
 - use only counts in greedyIP() in ipFilter().
 - compute run length encoding and candidate.data in ipFilter(campaigns = TRUE).
-- change/set ipCount(sort.count = TRUE)
+- change/set ipCount(sort.count = TRUE).
 - use "file.url.date" in ipCount() and ipDownloads().
 - disable parallel code for ipFilter(campaigns = TRUE).
 - include local time with logInfo(details = TRUE).
