@@ -1,6 +1,6 @@
-2be3ab06c22f84cffe13a033f65b9ee4 *DESCRIPTION
+b554e74b611645c17bd7fa06618714fb *DESCRIPTION
 e17bbde53243f31b0cad661b80b2ea8e *NAMESPACE
-10675011d164e174c5e255a30ffcacf5 *NEWS.md
+3345e7ce4d1ffb957ceac50cdbc954c2 *NEWS.md
 134365b304703b6280d33aa6194467b8 *R/annualDownloads.R
 3ae63c6bb278d03714141ba314731365 *R/archivePackages.R
 2be5f753270b7faa8d64d84b0a2e4325 *R/bioconductorDownloads.R
@@ -12,10 +12,10 @@ c3e9499ed61d3a5ba35c5992411a0219 *R/checkPackage.R
 c043b132b17e50c7b0bce93284548a4c *R/countsRanks.R
 52cc3a3b40d4de8f77e0340db1fe3e95 *R/cranDownloads.R
 43ba1632179485c382e9c0fcefb0e10f *R/cranDownloadsA.R
-02f91b71c8d642f0977543db9a91780a *R/cranDownloadsB.R
+8b7687b69161070a8abfd185aa3b068a *R/cranDownloadsB.R
 55df424d2fba9bf3ee45f20d925eea27 *R/cranDownloadsPlotAuxilliary.R
-aed483e63eb19dec0fe9afb4fdce096f *R/cranDownloadsPlotFunctions.R
-e15069cf422d11997ebfa0ec7fb9bfee *R/cranDownloadsPlotSmoother.R
+08ba92bad2dac1a2cdb231a560e07a02 *R/cranDownloadsPlotFunctions.R
+5efa515fa127abeadff377750b540999 *R/cranDownloadsPlotSmoother.R
 9581b248f0cf73a55e2b42e12f6eb492 *R/cranMirrors.R
 43d96af5c7ebfea2a8f2147e7cd03358 *R/cranPackageSize.R
 dd2fdfbdcba1e6a04a214858d2214340 *R/cranPackages.R
@@ -35,7 +35,7 @@ e435537995627add28d6c3f2aec46ab7 *R/inflationPlot.R
 a889edfe7dd3923c0e5db1d14ff67bc9 *R/ipFilter.R
 5a58de6df26f05c06421dddfddb5a997 *R/ipPackage.R
 7e8b4d1c35756fe86ae63c721af4d6e6 *R/logDate.R
-fec305db86f9c1d280bb5d4ccb0ff8a0 *R/logInfo.R
+0192b3b54b53dfc173285d6a0830b235 *R/logInfo.R
 238931e9bf150cad8f28ccda86ebc9cc *R/multiCore.R
 d36efd4025a431db9959282dc2c62580 *R/packageCountry.R
 39b8d77da9e9f71d99af726b6287613e *R/packageDistribution.R
