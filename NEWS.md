@@ -1,3 +1,27 @@
+### packageRank 0.9.3
+
+#### New Functionality
+
+- add cranDistribution() with plot, print and summary methods.
+- add queryCount(), queryPackage(), queryPercentile() and queryRank().
+- refactor and use memoization and cranDistribution() in packageRank().
+
+#### Function Changes
+
+- add/set packageRank(rank.ties = TRUE).
+- compute cores only for cranDistribution(ip.filter = TRUE).
+
+#### Plot Changes
+
+- use grDevices::devAskNewPage() with multiple packages in 
+  plot.packageRank(graphics = "base").
+
+#### Fixes
+
+- fix transitory problem of multiple instances of a package on CRAN during a
+  package update.
+
+
 ### packageRank 0.9.2
 
 #### Fixes
