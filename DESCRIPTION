@@ -2,8 +2,8 @@ Package: packageRank
 Type: Package
 Title: Computation and Visualization of Package Download Counts and
         Percentile Ranks
-Version: 0.9.3
-Date: 2024-10-16
+Version: 0.9.4
+Date: 2024-11-13
 Authors@R: person("Peter Li", email = "lindbrook@gmail.com",
     role = c("aut", "cre"))
 Maintainer: Peter Li <lindbrook@gmail.com>
@@ -21,7 +21,7 @@ Imports: cranlogs, curl, data.table (>= 1.12.2), ggplot2, ISOcodes,
         memoise, pkgsearch, R.utils, RCurl, rlang, rversions, sugrrants
 Suggests: knitr, rmarkdown
 NeedsCompilation: no
-Packaged: 2024-10-16 00:11:52 UTC; peter
+Packaged: 2024-11-13 00:53:16 UTC; peter
 Author: Peter Li [aut, cre]
 Repository: CRAN
-Date/Publication: 2024-10-16 03:40:02 UTC
+Date/Publication: 2024-11-13 01:50:02 UTC

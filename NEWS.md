@@ -1,3 +1,30 @@
+### packageRank 0.9.4
+
+#### Function Changes
+
+- match input vector order with output data frame in packageRank() and
+  queryPackage().
+- add/set queryPackage(check.package = TRUE).
+- move unique.packages to cranDistribution() list element and return via
+  summary().
+- add/set print.cranDistribution(top.n = 20).
+- remove parallel implementation of packageLog().
+- amend stop() message in fixDate_2012().
+- add 2012 exception to rev_fixDate_2012().
+- add total downloads to print.cranDistribution() & summary.cranDistribution().
+- use localTime() in logInfo().
+
+#### Plot Changes
+
+- amend title and subtitle in plot.cranDistribution().
+- amend x-axis in plot.packageDistribution().
+- add day of week to plot.cranDistribution() title.
+
+#### Fixes
+
+- fix memoization in cranDistribution().
+
+
 ### packageRank 0.9.3
 
 #### New Functionality

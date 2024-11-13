@@ -4,12 +4,12 @@
 \alias{queryPackage}
 \title{Query package name.}
 \usage{
-queryPackage(package = "packageRank", date = NULL, all.filters = FALSE,
+queryPackage(packages = "packageRank", date = NULL, all.filters = FALSE,
   ip.filter = FALSE, small.filter = FALSE, memoization = TRUE,
-  multi.core = FALSE)
+  check.package = TRUE, multi.core = FALSE)
 }
 \arguments{
-\item{package}{Character..}
+\item{packages}{Character..}
 
 \item{date}{Character. Date. "yyyy-mm-dd". NULL uses latest available log.}
 
@@ -20,6 +20,8 @@ queryPackage(package = "packageRank", date = NULL, all.filters = FALSE,
 \item{small.filter}{Logical. TRUE filters out downloads less than 1000 bytes.}
 
 \item{memoization}{Logical. Use memoization when downloading logs.}
+
+\item{check.package}{Logical. Validate and "spell check" package.}
 
 \item{multi.core}{Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. Mac and Unix only.}
 }

@@ -1029,7 +1029,7 @@ logInfo()
     [1] "No"
 
     $status
-    [1] "Today's log is typically posted by 09:00 PST (01 Feb 17:00 GMT)."
+    [1] "Today's log is typically posted by 01 Feb 09:00 PST | 01 Feb 17:00 UTC."
 
 #### time zones
 
@@ -1083,20 +1083,20 @@ packageRank(packages = "ergm", date = "2021-01-01")
     > 1 2020-12-30    ergm   292 878 of 20,077       95.6
 
     Warning message:
-    2020-12-31 log arrives in appox. 19 hours at 02 Jan 04:00 AEDT. Using last available!
+    2020-12-31 log arrives in ~19 hours at 02 Jan 04:00 AEDT. Using previous!
 
 Keep in mind that 17:00 UTC is not a hard deadline. Barring server
 issues, the logs are usually posted a little *before* that time. I don’t
 know when the script starts but the posting time seems to be a function
 of the number of entries: closer to 17:00 UTC when there are more
-entries (e.g., weekdays); before 17:00 UTC when there are fewer entries
-(e.g., weekends). Again, barring server issues, the ‘cranlogs’ results
-are usually available shortly *after* 17:00 UTC.
+entries (e.g., weekdays); earlier than 17:00 UTC when there are fewer
+entries (e.g., weekends). Again, barring server issues, the ‘cranlogs’
+results are usually available *before* 18:00 UTC.
 
 Here’s what you’d see using the Honolulu example:
 
 ``` r
-logInfo(show.available = TRUE)
+logInfo(details = TRUE)
 ```
 
     $`Today's log/result`
@@ -1114,7 +1114,7 @@ logInfo(show.available = TRUE)
     $status
     [1] "Everything OK."
 
-The functions uses your local time zone, which depends on R’s ability to
+The function uses your local time zone, which depends on R’s ability to
 compute your local time and time zone (e.g., `Sys.time()` and
 `Sys.timezone()`). My understanding is that there may be operating
 system or platform specific issues that could undermine this.
@@ -1133,22 +1133,22 @@ lowest number of observable downloads):
 queryCount(100)
 ```
 
-    >         package count rank nominal.rank unique.packages percentile
-    > 1     analogsea   100 2143         2129           26959       92.1
-    > 2  ComplexUpset   100 2143         2130           26959       92.1
-    > 3      detrendr   100 2143         2131           26959       92.1
-    > 4          drat   100 2143         2132           26959       92.1
-    > 5       enrichR   100 2143         2133           26959       92.1
-    > 6      exact2x2   100 2143         2134           26959       92.1
-    > 7       fdapace   100 2143         2135           26959       92.1
-    > 8          fdth   100 2143         2136           26959       92.1
-    > 9        ggmcmc   100 2143         2137           26959       92.1
-    > 10      jsTreeR   100 2143         2138           26959       92.1
-    > 11       likert   100 2143         2139           26959       92.1
-    > 12      praznik   100 2143         2140           26959       92.1
-    > 13     rayimage   100 2143         2141           26959       92.1
-    > 14       rlemon   100 2143         2142           26959       92.1
-    > 15        worcs   100 2143         2143           26959       92.1
+    >         package count rank nominal.rank percentile
+    > 1     analogsea   100 2143         2129       92.1
+    > 2  ComplexUpset   100 2143         2130       92.1
+    > 3      detrendr   100 2143         2131       92.1
+    > 4          drat   100 2143         2132       92.1
+    > 5       enrichR   100 2143         2133       92.1
+    > 6      exact2x2   100 2143         2134       92.1
+    > 7       fdapace   100 2143         2135       92.1
+    > 8          fdth   100 2143         2136       92.1
+    > 9        ggmcmc   100 2143         2137       92.1
+    > 10      jsTreeR   100 2143         2138       92.1
+    > 11       likert   100 2143         2139       92.1
+    > 12      praznik   100 2143         2140       92.1
+    > 13     rayimage   100 2143         2141       92.1
+    > 14       rlemon   100 2143         2142       92.1
+    > 15        worcs   100 2143         2143       92.1
 
 #### queryRank()
 
@@ -1159,20 +1159,20 @@ To find the package that was ranked 20th in downloads (the default is
 queryRank(20)
 ```
 
-    >   package count rank nominal.rank unique.packages percentile
-    > 1 stringr 33041   20           20           26959       99.9
+    >   package count rank nominal.rank percentile
+    > 1 stringr 33041   20           20       99.9
 
 #### queryPercentile()
 
 If you want the packages with a particular percentile rank, use
 `queryPercentile()`. Note that due to the discrete nature of counts,
-your choice of percentile may not be observed because they may fall in
-the vertical gaps in the data:
+your choice of percentile may not be available because they may fall in
+the vertical gaps in the observed data:
 
 ![](man/figures/README-discrete_counts-1.png)<!-- -->
 
 For this reason, `queryPercentile()` rounds you selection to whole
-numbers. Also, the default value is set to 50, which uses `median()`to
+numbers. Also, the default value, which is set to 50, uses `median()`to
 guarantee a result.
 
 ``` r
@@ -1180,13 +1180,13 @@ guarantee a result.
 head(queryPercentile())
 ```
 
-    >    package count  rank nominal.rank unique.packages percentile
-    > 1 AATtools    12 13697        12845           26959       49.2
-    > 2    abdiv    12 13697        12846           26959       49.2
-    > 3 abglasso    12 13697        12847           26959       49.2
-    > 4  ablasso    12 13697        12848           26959       49.2
-    > 5   Ac3net    12 13697        12849           26959       49.2
-    > 6      acp    12 13697        12850           26959       49.2
+    >    package count  rank nominal.rank percentile
+    > 1 AATtools    12 13697        12845       49.2
+    > 2    abdiv    12 13697        12846       49.2
+    > 3 abglasso    12 13697        12847       49.2
+    > 4  ablasso    12 13697        12848       49.2
+    > 5   Ac3net    12 13697        12849       49.2
+    > 6      acp    12 13697        12850       49.2
 
 You can also set a range of percentile ranks using the ‘lo’ and/or ‘hi’
 arguments. If you get an error message, you may need to widen your
@@ -1197,32 +1197,96 @@ head(queryPercentile(lo = 95, hi = 96), 3)
 tail(queryPercentile(lo = 95, hi = 96), 3)
 ```
 
-    >      package count rank nominal.rank unique.packages percentile
-    > 1    mapdata   420  931          931           26959       96.5
-    > 2 shinyalert   418  932          932           26959       96.5
-    > 3       klaR   416  935          933           26959       96.5
-    >                package count rank nominal.rank unique.packages percentile
-    > 536 PortfolioAnalytics   189 1466         1466           26959       94.6
-    > 537              binom   188 1468         1467           26959       94.6
-    > 538            prefmod   188 1468         1468           26959       94.6
+    >      package count rank nominal.rank percentile
+    > 1    mapdata   420  931          931       96.5
+    > 2 shinyalert   418  932          932       96.5
+    > 3       klaR   416  935          933       96.5
+    >                package count rank nominal.rank percentile
+    > 536 PortfolioAnalytics   189 1466         1466       94.6
+    > 537              binom   188 1468         1467       94.6
+    > 538            prefmod   188 1468         1468       94.6
 
 #### cranDistribution()
 
 The above functions leverage `cranDistribution()`, which computes the
-distribution of download counts for a given log. The generic summary
-method provides the five number summary plus the arithmetic mean:
+ranks and the distribution of download counts for a given day’s log.
+
+Its print method provides the date, the number of unique packages
+downloaded, the total number of downloads (the total number of
+rows/observations in the log) and the count and rank data for the top 20
+packages:
+
+``` r
+cranDistribution()
+```
+
+    > $date
+    > [1] "2024-08-01"
+    > 
+    > $unique.packages.downloaded
+    > [1] "26,959"
+    > 
+    > $total.downloads
+    > [1] "5,760,937"
+    > 
+    > $top.n
+    >       package count rank nominal.rank percentile
+    > 1       rlang 56311    1            1      100.0
+    > 2     ggplot2 53981    2            2      100.0
+    > 3       withr 51577    3            3      100.0
+    > 4         cli 51509    4            4      100.0
+    > 5   lifecycle 47771    5            5      100.0
+    > 6       dplyr 46734    6            6      100.0
+    > 7       vctrs 45173    7            7      100.0
+    > 8    jsonlite 43280    8            8      100.0
+    > 9        Rcpp 40935    9            9      100.0
+    > 10     tibble 39908   10           10      100.0
+    > 11       glue 39430   11           11      100.0
+    > 12     pillar 37875   12           12      100.0
+    > 13   magrittr 35133   13           13      100.0
+    > 14      bslib 35106   14           14       99.9
+    > 15 colorspace 34707   15           15       99.9
+    > 16       xfun 34442   16           16       99.9
+    > 17     scales 34052   17           17       99.9
+    > 18         R6 33516   18           18       99.9
+    > 19      fansi 33111   19           19       99.9
+    > 20    stringr 33041   20           20       99.9
+
+Note that if you want to specify the number of top N packages, you’ll
+have to explicitly use the print() and the ‘top.n’ argument:
+
+``` r
+print(cranDistribution(), top.n = 7)
+```
+
+Alternatively, you can use `queryRank()`:
+
+``` r
+queryRank(1:7)
+```
+
+The summary method provides the number of unique packages downloaded,
+the total number of downloads and the five number summary (plus the
+arithmetic mean):
 
 ``` r
 summary(cranDistribution())
 ```
 
+    > $unique.packages.downloaded
+    > [1] 26959
+    > 
+    > $total.downloads
+    > [1] 5760937
+    > 
+    > $download.summary
     >    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
     >     1.0     6.0    12.0   213.7    28.0 56311.0
 
-The generic plot method graphs the distribution of base 10 logarithm of
-download counts. Each plot is annotated with the median, mean and
-maximum download counts, as well as the total number of unique packages 
-observed.
+The plot method graphs the distribution of base 10 logarithm of download
+counts. Each plot is annotated with the median, mean and maximum
+download counts, as well as the total number of downloads and the total
+number of unique packages observed.
 
 ``` r
 plot(cranDistribution())

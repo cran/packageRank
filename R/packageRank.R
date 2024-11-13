@@ -25,7 +25,7 @@ packageRank <- function(packages = "packageRank", date = NULL,
 
   if (check.package) packages <- checkPackage(packages)
 
-  x <- mcranDistribution(date = date, all.filters = all.filters, 
+  x <- cranDistribution(date = date, all.filters = all.filters, 
     ip.filter = ip.filter, small.filter = small.filter, 
     memoization = memoization, multi.core = multi.core)
 
@@ -40,13 +40,14 @@ packageRank <- function(packages = "packageRank", date = NULL,
   }
   
   tmp <- x$data[x$data$package %in% packages, ]
+  tmp <- tmp[match(packages, tmp$package), ]
   
   if (rank.ties) {
     rnk <- paste(format(tmp$rank, big.mark = ","), "of", 
-                 format(tmp$unique.packages, big.mark = ","))
+                 format(x$unique.packages, big.mark = ","))
   } else {
     rnk <- paste(format(tmp$nominal.rank, big.mark = ","), "of", 
-                 format(tmp$unique.packages, big.mark = ","))
+                 format(x$unique.packages, big.mark = ","))
   }
   
   pkg.data <- data.frame(date = x$date, tmp[, c("package", "count")], 
