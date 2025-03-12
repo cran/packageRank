@@ -1,3 +1,18 @@
+### packageRank 0.9.5
+
+#### Function Changes
+
+- set annualDownloads() internal.
+- show day of week in print.cranDistribution().
+- prioritize packageCRAN() over 'pkgsearch' results in packageHistory().
+
+#### Fixes
+
+- fix rPlot() for log.y = TRUE and graphics = "ggplot2".
+- fix unmatched seq.start and seq.stop in removeSequences().
+- fix plot.cranDownloads(unit.observation = "year").
+
+
 ### packageRank 0.9.4
 
 #### Function Changes

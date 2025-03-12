@@ -4,7 +4,7 @@
 #' @param start.yr Numeric or Integer.
 #' @param end.yr Numeric or Integer.
 #' @note A way around Gateway Timeout (HTTP 504). This takes a while since it computes each year separately.s
-#' @export
+#' @noRd
 
 annualDownloads <- function(start.yr = 2013, end.yr = 2023) {
   dwnlds <- lapply(start.yr:end.yr, function(yr) {
@@ -36,7 +36,7 @@ annualDownloads <- function(start.yr = 2013, end.yr = 2023) {
 #' @param points Logical.
 #' @param line.col Character. Color of line
 #' @param ... Additional plotting parameters.
-#' @export
+#' @noRd
 
 plot.annualDownloads <- function(x, statistic = "count", pool = TRUE, 
   log.y = FALSE, sep.y = FALSE, nrow = 3, smooth = TRUE, f = 1/4, span = 3/4, 
