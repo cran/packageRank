@@ -5,7 +5,8 @@
 # Plot functions for plot.cranDownloads() #
 
 cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
-  se, f, span, r.version, unit.observation) {
+  se, f, span, r.version, unit.observation, chatgpt, chatgpt.release, 
+  weekend) {
 
   dat <- x$cranlogs.data
   last.obs.date <- x$last.obs.date
@@ -192,22 +193,58 @@ cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
             col.ticks = "red")
         }
       } else {
+        wknd <- weekdays(dat$date) %in% c("Saturday", "Sunday")
+      
+        if (any(wknd)) {
+          wk.end <- dat[wknd, ]
+          wk.day <- dat[!wknd, ]
+        }
+    
         if (log.y) {
           plot(dat$date, dat[, y.nm], type = type, xlab = "Date",
-            ylab = paste("log10", y.nm.case), log = "y")
+            ylab = paste("log10", y.nm.case), log = "y", pch = NA)
         } else {
           plot(dat$date, dat[, y.nm], type = type, xlab = "Date",
-            ylab = y.nm.case)
+            ylab = y.nm.case, pch = NA)
+        }
+        
+        if (type == "o") {
+          points(wk.day$date, wk.day[, y.nm], pch = 16)
+          if (!weekend) points(wk.end$date, wk.end[, y.nm], pch = 16)
+        }
+
+        if (weekend) {
+          if (!is.null(x$when)) {
+            if (x$when %in% c("last-week", "last-month")) {
+              points(wk.end$date, wk.end[, y.nm], pch = 1)
+            }
+          } else {
+            if (isTRUE(points)) {
+              points(wk.end$date, wk.end[, y.nm], pch = 1)
+            } else {
+              points(wk.end$date, wk.end[, y.nm], pch = 1, cex = 3/4)
+            }
+          }
         }
       }
 
-      if (r.version) {
+      if (isTRUE(r.version) | r.version == "line") {
         r_v <- rversions::r_versions()
-        axis(3, at = as.Date(r_v$date), labels = paste("R", r_v$version),
-          cex.axis = 2/3, padj = 0.9)
+        r_date <- as.Date(r_v$date)
+        axis(3, at = r_date, labels = paste("R", r_v$version), cex.axis = 2/3,
+          padj = 0.9)
+        if (r.version == "line") abline(v = r_date, lty = "dotted")
       }
 
       if (smooth) addSmoother(x, complete, current.wk, f, span, wk1, y.nm)
+
+      if (isTRUE(chatgpt) | chatgpt == "line") {
+        axis(3, at = chatgpt.release, labels = "ChatGPT", cex.axis = 0.6, 
+          padj = 0.9, col.axis = "blue", col.ticks = "blue")
+        if (chatgpt == "line") {
+          abline(v = chatgpt.release, col = "blue", lty = "dotted")  
+        }
+      }
       
       title(main = "Total Package Downloads")
 
@@ -446,7 +483,7 @@ cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
 
 singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
   se, f, span, log.y, package.version, dev.mode, r.version, same.xy,
-  unit.observation) {
+  unit.observation, chatgpt, chatgpt.release, weekend) {
 
   dat <- x$cranlogs.data
   last.obs.date <- x$last.obs.date
@@ -555,17 +592,24 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
           axis(4, at = est.data[, y.nm], labels = "est", col.axis = "red",
             col.ticks = "red")
 
-          if (package.version) {
-            if (dev.mode) p_v <- packageHistory0(est.data$package)
-            else p_v <- packageHistory(est.data$package, check.package = FALSE)
+          if (isTRUE(package.version) | package.version == "line") {
+            if (dev.mode) p_v <- packageHistory0(x$package[i])
+            else p_v <- packageHistory(x$package[i], check.package = FALSE)
+                                
             axis(3, at = p_v$Date, labels = p_v$Version, cex.axis = 2/3,
               padj = 0.9, col.axis = "red", col.ticks = "red")
+            
+            if (package.version == "line") {
+              abline(v = p_v$Date, col = "red", lty = "dotted")
+            }        
           }
 
-          if (r.version) {
+          if (isTRUE(r.version) | r.version == "line") {
             r_v <- rversions::r_versions()
-            axis(3, at = as.Date(r_v$date), labels = paste("R", r_v$version),
+            r_date <- as.Date(r_v$date)
+            axis(3, at = r_date, labels = paste("R", r_v$version), 
               cex.axis = 2/3, padj = 0.9)
+            if (r.version == "line") abline(v = r_date, lty = "dotted")
           }
 
           if (smooth) {
@@ -723,18 +767,24 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
               col.axis = "red", col.ticks = "red")
           }
 
-          if (package.version) {
-            if (dev.mode) p_v <- packageHistory0(current.wk.est$package)
-            else p_v <- packageHistory(current.wk.est$package, 
-              check.package = FALSE)
+          if (isTRUE(package.version) | package.version == "line") {
+            if (dev.mode) p_v <- packageHistory0(x$package[i])
+            else p_v <- packageHistory(x$package[i], check.package = FALSE)
+                        
             axis(3, at = p_v$Date, labels = p_v$Version, cex.axis = 2/3,
               padj = 0.9, col.axis = "red", col.ticks = "red")
+            
+            if (package.version == "line") {
+              abline(v = p_v$Date, col = "red", lty = "dotted")
+            }        
           }
 
-          if (r.version) {
+          if (isTRUE(r.version) | r.version == "line") {
             r_v <- rversions::r_versions()
-            axis(3, at = as.Date(r_v$date), labels = paste("R", r_v$version),
+            r_date <- as.Date(r_v$date)
+            axis(3, at = r_date, labels = paste("R", r_v$version), 
               cex.axis = 2/3, padj = 0.9)
+            if (r.version == "line") abline(v = r_date, lty = "dotted")
           }
 
           if (smooth) {
@@ -762,26 +812,59 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
           pkg.dat <- dat[dat$package == pkg, ]
           type <- ifelse(points, "o", "l")
 
+          wknd <- weekdays(pkg.dat$date) %in% c("Saturday", "Sunday")
+      
+          if (any(wknd)) {
+            wk.end <- pkg.dat[wknd, ]
+            wk.day <- pkg.dat[!wknd, ]
+          }
+
           if (log.y) {
             plot(pkg.dat$date, pkg.dat[, y.nm], type = type, xlab = "Date",
               ylab = paste("log10", y.nm.case), xlim = xlim, ylim = ylim,
-              log = "y")
+              log = "y", pch = NA)
           } else {
             plot(pkg.dat$date, pkg.dat[, y.nm], type = type, xlab = "Date",
-              ylab = y.nm.case, xlim = xlim, ylim = ylim)
-          }
-          
-          if (package.version) {
-            if (dev.mode) p_v <- packageHistory0(pkg)
-            else p_v <- packageHistory(pkg, check.package = FALSE)
-            axis(3, at = p_v$Date, labels = p_v$Version, cex.axis = 2/3,
-              padj = 0.9, col.axis = "red", col.ticks = "red")
+              ylab = y.nm.case, xlim = xlim, ylim = ylim, pch = NA)
           }
 
-          if (r.version) {
+          if (type == "o") {
+            points(wk.day$date, wk.day[, y.nm], pch = 16)
+            if (!weekend) points(wk.end$date, wk.end[, y.nm], pch = 16)
+          }
+
+          if (weekend) {
+            if (!is.null(x$when)) {
+              if (x$when %in% c("last-week", "last-month")) {
+                points(wk.end$date, wk.end[, y.nm], pch = 1)
+              }
+            } else {
+              if (isTRUE(points)) {
+                points(wk.end$date, wk.end[, y.nm], pch = 1)
+              } else {
+                points(wk.end$date, wk.end[, y.nm], pch = 1, cex = 3/4)
+              }
+            }
+          }
+
+          if (isTRUE(package.version) | package.version == "line") {
+            if (dev.mode) p_v <- packageHistory0(pkg)
+            else p_v <- packageHistory(pkg, check.package = FALSE)
+            
+            axis(3, at = p_v$Date, labels = p_v$Version, cex.axis = 2/3,
+              padj = 0.9, col.axis = "red", col.ticks = "red")
+            
+            if (package.version == "line") {
+              abline(v = p_v$Date, col = "red", lty = "dotted")
+            }        
+          }
+
+          if (isTRUE(r.version) | r.version == "line") {
             r_v <- rversions::r_versions()
-            axis(3, at = as.Date(r_v$date), labels = paste("R", r_v$version),
+            r_date <- as.Date(r_v$date)
+            axis(3, at = r_date, labels = paste("R", r_v$version), 
               cex.axis = 2/3, padj = 0.9)
+            if (r.version == "line") abline(v = r_date, lty = "dotted")
           }
 
           if (smooth) {
@@ -799,6 +882,14 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
           }
           title(main = pkg)
         }))
+      }
+
+      if (isTRUE(chatgpt) | chatgpt == "line") {
+        axis(3, at = chatgpt.release, labels = "ChatGPT", cex.axis = 0.6, 
+          padj = 0.9, col.axis = "blue", col.ticks = "blue")
+        if (chatgpt == "line") {
+          abline(v = chatgpt.release, col = "blue", lty = "dotted")  
+        }
       }
 
       if (length(x$packages) > 1) grDevices::devAskNewPage(ask = FALSE)
@@ -1091,7 +1182,7 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
 
 multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
   legend.location, ip.legend.location, points, smooth, se, f, span,
-  unit.observation) {
+  unit.observation, chatgpt, chatgpt.release, weekend) {
 
   dat <- x$cranlogs.data
   last.obs.date <- x$last.obs.date
@@ -1215,7 +1306,7 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
           legend(x = ip.legend.location,
                 legend = c("Observed", "Estimate"),
                 pch = 0:1,
-                bg = "white",
+                bg = NULL,
                 cex = 2/3,
                 title = NULL,
                 bty = "n",
@@ -1384,7 +1475,7 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
           legend(x = ip.legend.location,
                 legend = c("Backdate", "Observed", "Estimate"),
                 pch = c(8, 0, 1),
-                bg = "white",
+                bg = NULL,
                 cex = 2/3,
                 title = NULL,
                 bty = "n",
@@ -1410,9 +1501,37 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
             tmp <- dat[dat$package == x$packages[i], ]
             lines(tmp$date, tmp[, statistic], col = cbPalette[i])
 
-            if (points) {
-              points(tmp[, "date"], tmp[, statistic], col = cbPalette[i],
+            wknd <- weekdays(tmp$date) %in% c("Saturday", "Sunday")
+      
+            if (any(wknd)) {
+              wk.end <- tmp[wknd, ]
+              wk.day <- tmp[!wknd, ]
+            }
+
+            if (type == "o") {
+              points(wk.day$date, wk.day[, statistic], col = cbPalette[i], 
                 pch = 16)
+              if (!weekend) {
+                points(wk.end$date, wk.end[, statistic], col = cbPalette[i],
+                  pch = 16)
+              }
+            }
+
+            if (weekend) {
+              if (!is.null(x$when)) {
+                if (x$when %in% c("last-week", "last-month")) {
+                  points(wk.end$date, wk.end[, statistic], col = cbPalette[i],
+                    pch = 1)
+                }
+              } else {
+                if (isTRUE(points)) {
+                  points(wk.end$date, wk.end[, statistic], col = cbPalette[i],
+                    pch = 1)
+                } else {
+                  points(wk.end$date, wk.end[, statistic], cex = 3/4,
+                    col = cbPalette[i], pch = 1)
+                }
+              }
             }
 
             if (smooth) {
@@ -1429,7 +1548,7 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
                  legend = x$packages,
                  col = cbPalette[id],
                  pch = NA,
-                 bg = "white",
+                 bg = NULL,
                  cex = 2/3,
                  title = NULL,
                  lwd = 1,
@@ -1439,7 +1558,7 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
                legend = x$packages,
                col = cbPalette[id],
                pch = NA,
-               bg = "white",
+               bg = NULL,
                cex = 2/3,
                title = NULL,
                lwd = 1,
@@ -1452,6 +1571,14 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
           } else {
             title(sub = paste("lowess f =", round(f, 2)), cex.sub = 0.9)
           }
+        }
+      }
+      
+      if (isTRUE(chatgpt) | chatgpt == "line") {
+        axis(3, at = chatgpt.release, labels = "ChatGPT", cex.axis = 0.6, 
+          padj = 0.9, col.axis = "blue", col.ticks = "blue")
+        if (chatgpt == "line") {
+          abline(v = chatgpt.release, col = "blue", lty = "dotted")  
         }
       }
     }
@@ -1739,7 +1866,7 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
 
 rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
   ip.legend.location, points, log.y, smooth, se, r.version, f, span,
-  multi.plot, unit.observation) {
+  multi.plot, unit.observation, chatgpt, chatgpt.release, weekend) {
 
   dat <- x$cranlogs.data
   y.nm <- statistic
@@ -1786,7 +1913,6 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
 
   } else if (obs.ct > 1) {
     if (graphics == "base") {
-
       pltfrm <- c("osx", "src", "win")
       pltfrm.col <- c("red", "dodgerblue", "black")
       names(pltfrm.col) <- pltfrm
@@ -1868,7 +1994,7 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
                  legend = c("win", "mac", "src"),
                  col = c("black", "red", "dodgerblue"),
                  pch = rep(16, 3),
-                 bg = "white",
+                 bg = NULL,
                  cex = 2/3,
                  title = NULL,
                  lwd = 1,
@@ -1877,7 +2003,7 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
           legend(x = legend.location,
                  legend = c("win", "mac", "src"),
                  col = c("black", "red", "dodgerblue"),
-                 bg = "white",
+                 bg = NULL,
                  cex = 2/3,
                  title = NULL,
                  lwd = 1,
@@ -1887,7 +2013,7 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
         legend(x = ip.legend.location,
                legend = c("Est", "Obs"),
                pch = 1:0,
-               bg = "white",
+               bg = NULL,
                cex = 2/3,
                title = NULL,
                lty = c("longdash", "dotted"),
@@ -2029,7 +2155,7 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
                  legend = c("win", "mac", "src"),
                  col = c("black", "red", "dodgerblue"),
                  pch = rep(16, 3),
-                 bg = "white",
+                 bg = NULL,
                  cex = 2/3,
                  title = NULL,
                  lwd = 1,
@@ -2038,7 +2164,7 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
           legend(x = legend.location,
                  legend = c("win", "mac", "src"),
                  col = c("black", "red", "dodgerblue"),
-                 bg = "white",
+                 bg = NULL,
                  cex = 2/3,
                  title = NULL,
                  lwd = 1,
@@ -2048,12 +2174,19 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
         legend(x = ip.legend.location,
                legend = c("Backdate", "Est", "Obs"),
                pch = c(8, 1, 0),
-               bg = "white",
+               bg = NULL,
                cex = 2/3,
                title = NULL,
                bty = "n")
 
       } else {
+        wknd <- weekdays(dat$date) %in% c("Saturday", "Sunday")
+      
+        if (any(wknd)) {
+          wk.end <- dat[wknd, ]
+          wk.day <- dat[!wknd, ]
+        }
+
         if (log.y) {
           plot(dat[dat$platform == "win", "date"],
                dat[dat$platform == "win", statistic],
@@ -2070,37 +2203,70 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
         pltfrm.col <- c("red", "dodgerblue", "black")
         names(pltfrm.col) <- c("osx", "src", "win")
 
-        if (points) {
+        invisible(lapply(seq_along(pltfrm), function(i) {
+          sel <- dat$platform == pltfrm[i]
+          lines(dat[sel, "date"], dat[sel, statistic], col = pltfrm.col[i])
+        }))
+
+        if (type == "o") {
           invisible(lapply(seq_along(pltfrm), function(i) {
-            points(dat[dat$platform == pltfrm[i], "date"],
-                  dat[dat$platform == pltfrm[i], statistic],
-                  pch = 16, col = pltfrm.col[i])
+            sel <- wk.day$platform == pltfrm[i]
+            points(wk.day[sel, "date"], wk.day[sel, statistic], 
+              col = pltfrm.col[i], pch = 16)
+          
+            if (!weekend) {
+              sel <- wk.end$platform == pltfrm[i]
+              points(wk.end[sel, "date"], wk.end[sel, statistic], 
+                col = pltfrm.col[i], pch = 16)
+            }
           }))
         }
 
-        invisible(lapply(seq_along(pltfrm), function(i) {
-          lines(dat[dat$platform == pltfrm[i], "date"],
-                dat[dat$platform == pltfrm[i], statistic],
-                type = type, col = pltfrm.col[i])
-        }))
+        if (weekend) {
+          if (!is.null(x$when)) {
+            if (x$when %in% c("last-week", "last-month")) {
+              invisible(lapply(seq_along(pltfrm), function(i) {
+                sel <- wk.end$platform == pltfrm[i]
+                points(wk.end[sel, "date"], wk.end[sel, statistic],
+                  col = pltfrm.col[i], pch = 1)
+              }))
+            }
+          }
+
+          if (isTRUE(points)) {
+            invisible(lapply(seq_along(pltfrm), function(i) {
+              sel <- wk.end$platform == pltfrm[i]
+              points(wk.end[sel, "date"], wk.end[sel, statistic],
+                col = pltfrm.col[i], pch = 1)
+            }))
+          } else {
+            invisible(lapply(seq_along(pltfrm), function(i) {
+              sel <- wk.end$platform == pltfrm[i]
+              points(wk.end[sel, "date"], wk.end[sel, statistic],
+                cex = 3/4, col = pltfrm.col[i], pch = 1)
+            }))
+          }
+        }
 
         if (points) {
           legend(x = legend.location,
                  legend = c("win", "mac", "src"),
                  col = c("black", "red", "dodgerblue"),
                  pch = rep(16, 8),
-                 bg = "white",
+                 bg = NULL,
                  cex = 2/3,
-                 title = "Platform",
-                 lwd = 1)
+                 title = NULL,
+                 lwd = 1,
+                 bty = "n")
         } else {
           legend(x = legend.location,
                  legend = c("win", "mac", "src"),
                  col = c("black", "red", "dodgerblue"),
-                 bg = "white",
+                 bg = NULL,
                  cex = 2/3,
-                 title = "Platform",
-                 lwd = 1)
+                 title = NULL,
+                 lwd = 1,
+                 bty = "n")
         }
       }
 
@@ -2109,10 +2275,20 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
           wk1.backdate)
       }
 
-      if (r.version) {
+      if (isTRUE(r.version) | r.version == "line") {
         r_v <- rversions::r_versions()
-        axis(3, at = as.Date(r_v$date), labels = paste("R", r_v$version),
+        r_date <- as.Date(r_v$date)
+        axis(3, at = r_date, labels = paste("R", r_v$version), 
           cex.axis = 2/3, padj = 0.9)
+        if (r.version == "line") abline(v = r_date, lty = "dotted")
+      }
+
+      if (isTRUE(chatgpt) | chatgpt == "line") {
+        axis(3, at = chatgpt.release, labels = "ChatGPT", cex.axis = 0.6, 
+          padj = 0.9, col.axis = "blue", col.ticks = "blue")
+        if (chatgpt == "line") {
+          abline(v = chatgpt.release, col = "blue", lty = "dotted")  
+        }
       }
 
       title(main = "R Application Downloads")
@@ -2457,7 +2633,8 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
 }
 
 rTotPlot <- function(x, statistic, graphics, obs.ct, legend.location, points,
-  log.y, smooth, se, r.version, f, span, unit.observation) {
+  log.y, smooth, se, r.version, f, span, unit.observation, chatgpt, 
+  chatgpt.release, weekend) {
 
   dat <- x$cranlogs.data
   last.obs.date <- x$last.obs.date
@@ -2683,11 +2860,38 @@ rTotPlot <- function(x, statistic, graphics, obs.ct, legend.location, points,
             col.axis = "red", col.ticks = "red")
         }
       } else {
+        wknd <- weekdays(dat$date) %in% c("Saturday", "Sunday")
+      
+        if (any(wknd)) {
+          wk.end <- dat[wknd, ]
+          wk.day <- dat[!wknd, ]
+        }
+
         if (log.y) {
-          plot(dat[, vars], type = type, xlab = "Date", log = "y", 
+          plot(dat[, vars], type = type, xlab = "Date", log = "y", pch = NA,
             ylab = paste("log10", y.nm.case))
         } else {
-          plot(dat[, vars], type = type, xlab = "Date", ylab = y.nm.case)
+          plot(dat[, vars], type = type, xlab = "Date", ylab = y.nm.case,
+            pch = NA)
+        }
+
+        if (type == "o") {
+          points(wk.day$date, wk.day[, statistic], pch = 16)
+          if (!weekend) points(wk.end$date, wk.end[, statistic], pch = 16)
+        }
+
+        if (weekend) {
+          if (!is.null(x$when)) {
+            if (x$when %in% c("last-week", "last-month")) {
+              points(wk.end$date, wk.end[, statistic], pch = 1)
+            }
+          } else {
+            if (isTRUE(points)) {
+              points(wk.end$date, wk.end[, statistic], pch = 1)
+            } else {
+              points(wk.end$date, wk.end[, statistic], pch = 1, cex = 3/4)
+            }
+          }
         }
       }
 
@@ -2695,10 +2899,20 @@ rTotPlot <- function(x, statistic, graphics, obs.ct, legend.location, points,
         addRTotPlotSmoother(dat, complete, f, span, statistic, wk1.backdate)
       }
 
-      if (r.version) {
+      if (isTRUE(r.version) | r.version == "line") {
         r_v <- rversions::r_versions()
-        axis(3, at = as.Date(r_v$date), labels = paste("R", r_v$version),
-          cex.axis = 2/3, padj = 0.9)
+        r_date <- as.Date(r_v$date)
+        axis(3, at = r_date, labels = paste("R", r_v$version), cex.axis = 2/3,
+          padj = 0.9)
+        if (r.version == "line") abline(v = r_date, lty = "dotted")
+      }
+
+      if (isTRUE(chatgpt) | chatgpt == "line") {
+        axis(3, at = chatgpt.release, labels = "ChatGPT", cex.axis = 0.6, 
+          padj = 0.9, col.axis = "blue", col.ticks = "blue")
+        if (chatgpt == "line") {
+          abline(v = chatgpt.release, col = "blue", lty = "dotted")  
+        }
       }
 
       title(main = "Total R Application Downloads")

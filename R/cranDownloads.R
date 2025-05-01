@@ -55,8 +55,8 @@ cranDownloads <- function(packages = NULL, when = NULL, from = NULL,
 #' @param se Logical. Works only with graphics = "ggplot2".
 #' @param f Numeric. smoother window for stats::lowess(). For graphics = "base" only; c.f. stats::lowess(f)
 #' @param span Numeric. Smoothing parameter for geom_smooth(); c.f. stats::loess(span).
-#' @param package.version Logical. Add latest package release dates.
-#' @param r.version Logical. Add R release dates.
+#' @param package.version Logical or "line". Add package release dates and vertical lines.
+#' @param r.version Logical or "line". Add R release dates and vertical lines.
 #' @param population.plot Logical. Plot population plot.
 #' @param population.seed Numeric. Seed for sample in population plot.
 #' @param multi.plot Logical.
@@ -66,6 +66,8 @@ cranDownloads <- function(packages = NULL, when = NULL, from = NULL,
 #' @param r.total Logical.
 #' @param dev.mode Logical. Use packageHistory0() to scrape CRAN.
 #' @param unit.observation Character. "year", "month", "week", or "day".
+#' @param chatgpt Logical or "line". Add intitial availability date and vertical line for ChatGPT.
+#' @param weekend Logical. Highlight weekends (pch = 1) when unit.observation = "day".
 #' @param multi.core Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. Mac and Unix only.
 #' @param ... Additional plotting parameters.
 #' @return A base R or ggplot2 plot.
@@ -84,9 +86,11 @@ plot.cranDownloads <- function(x, statistic = "count", graphics = "auto",
   population.plot = FALSE, population.seed = as.numeric(Sys.Date()),
   multi.plot = FALSE, same.xy = TRUE, legend.location = "topleft",
   ip.legend.location = "topright", r.total = FALSE, dev.mode = FALSE,
-  unit.observation = "day", multi.core = FALSE, ...) {
+  unit.observation = "day", chatgpt = FALSE, weekend = FALSE, 
+  multi.core = FALSE, ...) {
 
   cores <- multiCore(multi.core)
+  chatgpt.release <- as.Date("2022-11-30")
 
   if (graphics == "auto") {
     if (is.null(x$packages)) {
@@ -129,7 +133,16 @@ plot.cranDownloads <- function(x, statistic = "count", graphics = "auto",
   if (!graphics %in% c("base", "ggplot2")) {
     stop('graphics must be "base" or "ggplot2"', call. = FALSE)
   }
-
+  if (!is.logical(package.version) & package.version != "line") {
+    stop('package.version must be TRUE/FALSE or "line".', call. = FALSE)
+  }
+  if (!is.logical(r.version) & r.version != "line") {
+    stop('r.version must be TRUE/FALSE or "line".', call. = FALSE)
+  }
+  if (!is.logical(chatgpt) & chatgpt != "line") {
+    stop('chatgpt must be TRUE/FALSE or "line".', call. = FALSE)
+  }
+  
   if (unit.observation %in% c("week", "month", "year")) {
     if (is.null(x$packages)) {
       x$first.obs.date <- x$cranlogs.data[1, "date"]
@@ -168,23 +181,25 @@ plot.cranDownloads <- function(x, statistic = "count", graphics = "auto",
   } else if ("R" %in% x$packages) {
     if (r.total) {
       rTotPlot(x, statistic, graphics, obs.ct, legend.location, points,
-        log.y, smooth, se, r.version, f, span, unit.observation)
+        log.y, smooth, se, r.version, f, span, unit.observation, chatgpt,
+        chatgpt.release, weekend)
     } else {
       rPlot(x, statistic, graphics, obs.ct, legend.location,
         ip.legend.location, points, log.y, smooth, se, r.version, f, span,
-        multi.plot, unit.observation)
+        multi.plot, unit.observation, chatgpt, chatgpt.release, weekend)
     }
   } else if (is.null(x$packages)) {
     cranPlot(x, statistic, graphics, obs.ct, points, log.y, smooth, se, f,
-      span, r.version, unit.observation)
+      span, r.version, unit.observation, chatgpt, chatgpt.release, weekend)
   } else {
     if (multi.plot) {
       multiPlot(x, statistic, graphics, obs.ct, log.y, legend.location,
-        ip.legend.location, points, smooth, se, f, span, unit.observation)
+        ip.legend.location, points, smooth, se, f, span, unit.observation, 
+        chatgpt, chatgpt.release, weekend)
     } else {
       singlePlot(x, statistic, graphics, obs.ct, points, smooth, se, f,
         span, log.y, package.version, dev.mode, r.version, same.xy, 
-        unit.observation)
+        unit.observation, chatgpt, chatgpt.release, weekend)
     }
   }
 }

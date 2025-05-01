@@ -6,6 +6,6 @@
 #' @param tz Character. Time zone.
 #' @noRd
 
-dateTime <- function(date = "2021-01-01", time = "09:00", tz = "GMT") {
-  as.POSIXct(paste(date, time), tz = tz)
+dateTime <- function(date = "2021-01-01", time = "09:00", tz = "UTC") {
+  fasttime::fastPOSIXct(paste(date, time), tz = tz)
 }

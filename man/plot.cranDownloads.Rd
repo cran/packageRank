@@ -10,7 +10,8 @@
   population.plot = FALSE, population.seed = as.numeric(Sys.Date()),
   multi.plot = FALSE, same.xy = TRUE, legend.location = "topleft",
   ip.legend.location = "topright", r.total = FALSE, dev.mode = FALSE,
-  unit.observation = "day", multi.core = FALSE, ...)
+  unit.observation = "day", chatgpt = FALSE, weekend = FALSE,
+  multi.core = FALSE, ...)
 }
 \arguments{
 \item{x}{object.}
@@ -31,9 +32,9 @@
 
 \item{span}{Numeric. Smoothing parameter for geom_smooth(); c.f. stats::loess(span).}
 
-\item{package.version}{Logical. Add latest package release dates.}
+\item{package.version}{Logical or "line". Add package release dates and vertical lines.}
 
-\item{r.version}{Logical. Add R release dates.}
+\item{r.version}{Logical or "line". Add R release dates and vertical lines.}
 
 \item{population.plot}{Logical. Plot population plot.}
 
@@ -52,6 +53,10 @@
 \item{dev.mode}{Logical. Use packageHistory0() to scrape CRAN.}
 
 \item{unit.observation}{Character. "year", "month", "week", or "day".}
+
+\item{chatgpt}{Logical or "line". Add intitial availability date and vertical line for ChatGPT.}
+
+\item{weekend}{Logical. Highlight weekends (pch = 1) when unit.observation = "day".}
 
 \item{multi.core}{Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores. Mac and Unix only.}
 

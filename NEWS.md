@@ -1,3 +1,32 @@
+### packageRank 0.9.6
+
+#### Function Changes
+
+- rename argument 'show.weekend' to 'weekend' in plot.cranDownloads().
+- use fasttime::fastPOSIXct() in dateTime().
+- replace as.POSIXlt() with as.POSIXct() in utc.R functions.
+- make rLog() internal.
+- replace "GMT" with "UTC".
+- re-enable/set packageLog(multi.core = FALSE).
+- set sequenceFilter(delta.time = 240).
+
+#### Graphic/Plot Changes (base graphics)
+
+- remove legend box and title for rPlot(unit.observation = "day").
+- set legend(bg = NULL) in plot.cranDownloads() functions.
+- allow package.version = "line" and r.version = "line" in plot.cranDownloads().
+- add/set plot.cranDownloads(chatgpt = FALSE) for graphics = "base".
+- allow chatgpt = "line" in plot.cranDownloads().
+- add/set plot.cranDownloads(weekend = FALSE).
+
+#### Fixes
+
+- fix packageHistory() with multiple packages in singlePlot().
+- compute date-time for packages before use of sequenceFilter().
+- add exception in packageLog() for packages that don't survive ipFilter().
+- fix rle() duplicates in removeSequences().
+
+
 ### packageRank 0.9.5
 
 #### Function Changes

@@ -2,8 +2,8 @@ Package: packageRank
 Type: Package
 Title: Computation and Visualization of Package Download Counts and
         Percentile Ranks
-Version: 0.9.5
-Date: 2025-03-12
+Version: 0.9.6
+Date: 2025-05-01
 Authors@R: person("Peter Li", email = "lindbrook@gmail.com",
     role = c("aut", "cre"))
 Maintainer: Peter Li <lindbrook@gmail.com>
@@ -17,11 +17,12 @@ Encoding: UTF-8
 Language: en-US
 LazyData: true
 RoxygenNote: 7.3.2
-Imports: cranlogs, curl, data.table (>= 1.12.2), ggplot2, ISOcodes,
-        memoise, pkgsearch, R.utils, RCurl, rlang, rversions, sugrrants
+Imports: cranlogs, curl, data.table (>= 1.12.2), fasttime, ggplot2,
+        ISOcodes, memoise, pkgsearch, R.utils, RCurl, rlang, rversions,
+        sugrrants
 Suggests: knitr, rmarkdown
 NeedsCompilation: no
-Packaged: 2025-03-12 00:29:39 UTC; peter
+Packaged: 2025-04-30 23:54:39 UTC; peter
 Author: Peter Li [aut, cre]
 Repository: CRAN
-Date/Publication: 2025-03-12 00:50:02 UTC
+Date/Publication: 2025-05-01 04:20:02 UTC
