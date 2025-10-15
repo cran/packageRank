@@ -1,12 +1,12 @@
 #' Fetch CRAN Logs.
 #'
-#' @param date Character. Date. yyyy-mm-dd.
+#' @param date Date. yyyy-mm-dd.
 #' @param memoization Logical. Use memoization when downloading logs.
 #' @param dev.mode Logical. Use Base R code.
 #' @noRd
 
-fetchCranLog <- function(date, memoization = FALSE, dev.mode = FALSE) {
-  year <- as.POSIXlt(date)$year + 1900
+fetchCranLog <- function(date, memoization = TRUE, dev.mode = FALSE) {
+  year <- as.numeric(format(date, format = "%Y"))
   rstudio.url <- "http://cran-logs.rstudio.com/"
   log.url <- paste0(rstudio.url, year, '/', date, ".csv.gz")
 
@@ -38,6 +38,7 @@ fetchCranLog <- function(date, memoization = FALSE, dev.mode = FALSE) {
 #' @import memoise
 #' @importFrom data.table fread
 #' @importFrom R.utils decompressFile
+#' @importFrom cachem cache_mem
 #' @note mfetchLog() is memoized version.
 #' @noRd
 
@@ -50,7 +51,8 @@ fetchLog <- function(x) {
   data.table::fread(x, data.table = FALSE)
 }
 
-mfetchLog <- memoise::memoise(fetchLog)
+mfetchLog <- memoise::memoise(fetchLog, 
+  cache = cachem::cache_mem(max_size = 1.5 * 1024 * 1024^2))
 
 #' Get gzipped data at URL.
 #'

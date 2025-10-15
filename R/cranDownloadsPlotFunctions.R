@@ -1,8 +1,8 @@
-#' @importFrom ggplot2 aes element_blank element_text facet_wrap geom_hline geom_line geom_point geom_smooth ggplot ggtitle scale_color_manual scale_linetype_manual scale_shape_manual scale_x_log10 scale_y_log10 theme theme_bw vars xlab ylab
-#' @importFrom graphics abline axis barplot dotchart legend lines mtext par points segments text title
-#' @importFrom rlang .data
-
 # Plot functions for plot.cranDownloads() #
+
+#' @importFrom graphics abline axis barplot dotchart legend lines mtext par points segments text title
+
+utils::globalVariables(".data")
 
 cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
   se, f, span, r.version, unit.observation, chatgpt, chatgpt.release, 
@@ -14,6 +14,12 @@ cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
 
   y.nm <- statistic
   y.nm.case <- tools::toTitleCase(statistic)
+
+  if (isTRUE(r.version) | r.version == "line") {  
+    rvers.data <- rversions::r_versions()
+    r_date <- as.Date(rvers.data$date)
+    r_v <- paste("R", rvers.data$version)
+  }
 
   if (obs.ct == 1) {
     if (graphics == "base") {
@@ -32,17 +38,19 @@ cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
         
         p <- ggplot2::ggplot(data = dat, 
                ggplot2::aes(x = .data[[statistic]], y = .data$platform)) +
-             ggplot2::xlab(paste("log10", y.nm.case))
+             ggplot2::labs(x = paste("log10", y.nm.case))
       } else {
         p <- ggplot2::ggplot(data = dat, 
                ggplot2::aes(x = .data[[statistic]], y = .data$platform)) +
-             ggplot2::xlab(y.nm.case)  
+             ggplot2::labs(x = y.nm.case)
       }
 
-      p + ggplot2::geom_point(size = 2) + 
-          ggplot2::ylab(NULL) +
+      ttl <- paste("R Package Downloads:", unique(dat$date))
+
+      p + ggplot2::geom_point(size = 2) +
+          ggplot2::labs(y = NULL) +
           ggplot2::theme_bw() +
-          ggplot2::ggtitle(paste("R Package Downloads:", unique(dat$date))) +
+          ggplot2::labs(title = ttl) +
           ggplot2::theme(panel.grid.major.x = ggplot2::element_blank(),
                          panel.grid.minor = ggplot2::element_blank(),
                          plot.title = ggplot2::element_text(hjust = 0.5))
@@ -67,13 +75,15 @@ cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
         ylim <- range(c(dat[, y.nm], est.data[, y.nm]))
 
         if (log.y) {
-          plot(complete$date, complete[, y.nm], type = type,
-            xlab = "Date", ylab = paste("log10", y.nm.case), xlim = xlim,
-            ylim = ylim, log = "y", pch = 16)
+          plot(complete$date, complete[, y.nm], type = type, xlab = "Date",
+            ylab = paste("log10", y.nm.case), xlim = xlim, ylim = ylim,
+            log = "y", pch = 16)
         } else {
-          plot(complete$date, complete[, y.nm], type = type,
-            xlab = "Date", ylab = y.nm.case, xlim = xlim, ylim = ylim, pch = 16)
+          plot(complete$date, complete[, y.nm], type = type, xlab = "Date",
+            ylab = y.nm.case, xlim = xlim, ylim = ylim, pch = 16)
         }
+
+        missingDatesPolygons(dat, ylim, log.y = log.y)
 
         points(ip.data[, "date"], ip.data[, y.nm], col = "black", pch = 0)
         points(est.data[, "date"], est.data[, y.nm], col = "red", pch = 1)
@@ -92,6 +102,19 @@ cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
         axis(4, at = ip.data[, y.nm], labels = "obs")
         axis(4, at = est.data[, y.nm], labels = "est", col.axis = "red",
           col.ticks = "red")
+
+        if (smooth) {
+          if (nrow(dat) > 7) {
+            smooth.data <- stats::loess(complete[, y.nm] ~ 
+              as.numeric(complete$date), span = span)
+            x.date <- as.Date(smooth.data$x)
+            lines(x.date, smooth.data$fitted, col = "blue", lwd = 1.25)
+          } else if (nrow(dat) <= 7) {
+            smooth.data <- stats::lowess(complete$date, complete[, y.nm], f = f)
+            lines(smooth.data, col = "blue", lwd = 1.25)
+          }
+        }
+
       } else if (any(dat$partial)) { # unit.observation = "week"
         unit.date <- dat$date
 
@@ -154,6 +177,8 @@ cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
             ylab = y.nm.case, xlim = xlim, ylim = ylim, pch = 16)
         }
 
+        missingDatesPolygons(dat, ylim, log.y = log.y)
+
         if (weekdays(x$from) == "Sunday") {
           points(wk1.partial$date, wk1.partial[, y.nm], pch = 16)
           segments(wk1.partial$date, wk1.partial[, y.nm],
@@ -192,14 +217,36 @@ cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
           axis(4, at = current.wk.est[, y.nm], labels = "est", col.axis = "red",
             col.ticks = "red")
         }
+
+        if (smooth) {
+          tmp <- rbind(wk1.backdate, complete)
+                    
+          if (weekdays(last.obs.date) == "Saturday") {
+            tmp <- rbind(tmp, current.wk)
+          }
+          
+          if (nrow(tmp) > 7) {
+            smooth.data <- stats::loess(tmp[, y.nm] ~ as.numeric(tmp$date),
+              span = span)
+            x.date <- as.Date(smooth.data$x)
+            lines(x.date, smooth.data$fitted, col = "blue", lwd = 1.25)
+          } else if (nrow(tmp) <= 7){
+            smooth.data <- stats::lowess(tmp$date, tmp[, y.nm], f = f)
+            lines(stats::lowess(smooth.data$date, smooth.data[, y.nm], f = f),
+              col = "blue", lwd = 1.25)
+          }
+        }
+
       } else {
         wknd <- weekdays(dat$date) %in% c("Saturday", "Sunday")
-      
+
         if (any(wknd)) {
           wk.end <- dat[wknd, ]
           wk.day <- dat[!wknd, ]
         }
     
+        ylim <- range(dat[, y.nm])
+
         if (log.y) {
           plot(dat$date, dat[, y.nm], type = type, xlab = "Date",
             ylab = paste("log10", y.nm.case), log = "y", pch = NA)
@@ -207,10 +254,15 @@ cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
           plot(dat$date, dat[, y.nm], type = type, xlab = "Date",
             ylab = y.nm.case, pch = NA)
         }
+
+        missingDatesPolygons(dat, ylim, log.y = log.y)
         
         if (type == "o") {
-          points(wk.day$date, wk.day[, y.nm], pch = 16)
-          if (!weekend) points(wk.end$date, wk.end[, y.nm], pch = 16)
+          if (weekend) {
+            points(wk.day$date, wk.day[, y.nm], pch = 16)
+          } else {
+            points(dat$date, dat[, y.nm], pch = 16)
+          }
         }
 
         if (weekend) {
@@ -226,17 +278,29 @@ cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
             }
           }
         }
+
+        if (smooth) {
+          if (any(packageRank::missing.dates %in% dat$date) ) {
+            sel <- !dat$date %in% packageRank::missing.dates
+            smooth.data <- dat[sel, ]
+          } else smooth.data <- dat
+          
+          if (nrow(smooth.data) > 7) {
+            smooth.data <- stats::loess(smooth.data[, y.nm] ~
+              as.numeric(smooth.data$date), span = span)
+            x.date <- as.Date(smooth.data$x)
+            lines(x.date, smooth.data$fitted, col = "blue", lwd = 1.25)  
+          } else if (nrow(smooth.data) <= 7) {
+            lines(stats::lowess(smooth.data$date, smooth.data[, y.nm], f = f),
+              col = "blue", lwd = 1.25)
+          }
+        }
       }
 
       if (isTRUE(r.version) | r.version == "line") {
-        r_v <- rversions::r_versions()
-        r_date <- as.Date(r_v$date)
-        axis(3, at = r_date, labels = paste("R", r_v$version), cex.axis = 2/3,
-          padj = 0.9)
+        axis(3, at = r_date, labels = r_v, cex.axis = 2/3, padj = 0.9)
         if (r.version == "line") abline(v = r_date, lty = "dotted")
       }
-
-      if (smooth) addSmoother(x, complete, current.wk, f, span, wk1, y.nm)
 
       if (isTRUE(chatgpt) | chatgpt == "line") {
         axis(3, at = chatgpt.release, labels = "ChatGPT", cex.axis = 0.6, 
@@ -248,6 +312,14 @@ cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
       
       title(main = "Total Package Downloads")
 
+      if (smooth) {
+        if (nrow(dat) > 7) {
+          title(sub = paste("loess span =", round(span, 2)), cex.sub = 0.9)
+        } else if (nrow(dat) <= 7) {
+          title(sub = paste("lowess f =", round(f, 2)), cex.sub = 0.9)
+        }
+      }
+
     } else if (graphics == "ggplot2") {
       if (statistic == "count") {
         p <- ggplot2::ggplot(data = dat, 
@@ -257,7 +329,10 @@ cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
         p <- ggplot2::ggplot(data = dat, 
                ggplot2::aes(x = .data$date, y = .data$cumulative))
       }
-
+      
+      p <- gg_axis.annotation_polygon(dat, p, log.y, chatgpt, r.version,
+        chatgpt.release)
+      
       if (any(dat$in.progress)) {
         ip.sel <- dat$in.progress == TRUE
         ip.data <- dat[ip.sel, ]
@@ -300,8 +375,8 @@ cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
         if (points) p <- p + ggplot2::geom_point(data = complete)
         
         if (log.y) {
-          p <- p + ggplot2::scale_y_log10() + 
-                   ggplot2::ylab(paste("log10", y.nm.case))
+          p <- p + ggplot2::scale_y_log10() +
+                   ggplot2::labs(y = paste("log10", y.nm.case))
         }
         
         if (smooth) {
@@ -309,15 +384,19 @@ cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
             smooth.data <- complete
             p <- p + ggplot2::geom_smooth(data = smooth.data, method = "loess",
               formula = "y ~ x", se = se, span = span)
-          
           } else if (any(dat$partial)) {
             smooth.data <- rbind(wk1.backdate, complete)
             p <- p + ggplot2::geom_smooth(data = smooth.data, method = "loess",
-              formula = "y ~ x", se = se, span = span)
-          
+              formula = "y ~ x", se = se, span = span)      
           } else {
-            p <- p + ggplot2::geom_smooth(method = "loess", formula = "y ~ x", 
-              se = se, span = span)
+            if (any(packageRank::missing.dates %in% dat$date)) {
+              smooth.data <- dat[!dat$date %in% packageRank::missing.dates, ]
+              p <- p + ggplot2::geom_smooth(data = smooth.data, 
+                method = "loess", formula = "y ~ x",  se = se, span = span)
+            } else {
+              p <- p + ggplot2::geom_smooth(method = "loess", formula = "y ~ x",
+                se = se, span = span)
+            }
           }
         }
 
@@ -430,7 +509,7 @@ cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
         
         if (log.y) {
           p <- p + ggplot2::scale_y_log10() + 
-                   ggplot2::ylab(paste("log10", y.nm.case))
+                   ggplot2::labs(y = paste("log10", y.nm.case))
         }
 
         if (smooth) {
@@ -446,8 +525,14 @@ cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
             p <- p + ggplot2::geom_smooth(data = smooth.data, method = "loess",
               formula = "y ~ x", se = se, span = span)
           } else {
-            p <- p + ggplot2::geom_smooth(method = "loess", formula = "y ~ x", 
-              se = se, span = span)
+            if (any(packageRank::missing.dates %in% dat$date)) {
+              smooth.data <- dat[!dat$date %in% packageRank::missing.dates, ]
+              p <- p + ggplot2::geom_smooth(data = smooth.data, 
+                method = "loess", formula = "y ~ x",  se = se, span = span)
+            } else {
+              p <- p + ggplot2::geom_smooth(method = "loess", 
+                formula = "y ~ x", se = se, span = span)
+            }
           }
         }
       } else {
@@ -457,20 +542,26 @@ cranPlot <- function(x, statistic, graphics, obs.ct, points, log.y, smooth,
         
         if (log.y) {
           p <- p + ggplot2::scale_y_log10() + 
-                   ggplot2::ylab(paste("log10", y.nm.case))
+                   ggplot2::labs(y = paste("log10", y.nm.case))
         } else {
-          p <- p + ggplot2::ylab(y.nm.case)
+          p <- p + ggplot2::labs(y = y.nm.case)
         }
         
         if (smooth) {
-          p <- p + ggplot2::geom_smooth(method = "loess", formula = "y ~ x", 
-            se = se, span = span) 
+          if (any(packageRank::missing.dates %in% dat$date)) {
+            smooth.data <- dat[!dat$date %in% packageRank::missing.dates, ]
+            p <- p + ggplot2::geom_smooth(data = smooth.data, method = "loess",
+              formula = "y ~ x",  se = se, span = span)
+          } else {
+            p <- p + ggplot2::geom_smooth(method = "loess", formula = "y ~ x",
+              se = se, span = span)
+          }
         }
       }
 
       p <- p + ggplot2::theme_bw() +
-               ggplot2::xlab("Date") +
-               ggplot2::ggtitle("Total Package Downloads") +
+               ggplot2::labs(x = "Date") +
+               ggplot2::labs(title = "Total Package Downloads") +
                ggplot2::theme(legend.position = "bottom",
                               panel.grid.major = ggplot2::element_blank(),
                               panel.grid.minor = ggplot2::element_blank(),
@@ -492,6 +583,12 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
   y.nm <- statistic
   y.nm.case <- tools::toTitleCase(statistic)
 
+  if (isTRUE(r.version) | r.version == "line") {  
+    rvers.data <- rversions::r_versions()
+    r_date <- as.Date(rvers.data$date)
+    r_v <- paste("R", rvers.data$version)
+  }
+
   if (statistic == "count") {
     ttl <- "Package Download Counts"
   } else if (statistic == "cumulative") {
@@ -501,13 +598,6 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
   if (graphics == "base") {
     if (obs.ct == 1) {
       if (log.y) {
-        if (any(dat$count == 0)) {
-          zero.ct.pkg <- unique(dat[dat$count == 0, "package"])
-          dat[dat$count == 0, "count"] <- 1
-          for (p in zero.ct.pkg) {
-            dat$cumulative <- cumsum(dat[dat$package == p, "count"])
-          }
-        }
         dotchart(log10(dat[, y.nm]), labels = dat$package,
           xlab = paste("log10", y.nm.case), main = paste(ttl, unique(dat$date)))
       } else {
@@ -529,15 +619,6 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
         
         plot.data <- lapply(x$package, function(pkg) {
           pkg.dat <- dat[dat$package == pkg, ]
-
-          if (any(pkg.dat$count == 0)) {
-            zero.ct.pkg <- unique(pkg.dat[pkg.dat$count == 0, "package"])
-            pkg.dat[pkg.dat$count == 0, "count"] <- 1
-            for (p in zero.ct.pkg) {
-              pkg.dat$cumulative <- cumsum(pkg.dat[pkg.dat$package == p,
-                "count"])
-            }
-          }
 
           ip.sel <- pkg.dat$in.progress == TRUE
           ip.data <- pkg.dat[ip.sel, ]
@@ -565,14 +646,15 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
           est.data <- plot.data[[i]]$est.data
 
           if (log.y) {
-            plot(complete$date, complete[, y.nm], type = type,
-              xlab = "Date", ylab = paste("log10", y.nm.case), xlim = xlim,
-              ylim = ylim, log = "y", pch = 16)
+            plot(complete$date, complete[, y.nm], type = type, xlab = "Date", 
+              ylab = paste("log10", y.nm.case), xlim = xlim, ylim = ylim, 
+              log = "y", pch = 16)
           } else {
-            plot(complete$date, complete[, y.nm], type = type,
-              xlab = "Date", ylab = y.nm.case, xlim = xlim, ylim = ylim,
-              pch = 16)
+            plot(complete$date, complete[, y.nm], type = type, xlab = "Date", 
+              ylab = y.nm.case, xlim = xlim, ylim = ylim, pch = 16)
           }
+
+          missingDatesPolygons(dat, ylim, log.y = log.y)
 
           points(ip.data[, "date"], ip.data[, y.nm], col = "black", pch = 0)
           points(est.data[, "date"], est.data[, y.nm], col = "red", pch = 1)
@@ -593,47 +675,57 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
             col.ticks = "red")
 
           if (isTRUE(package.version) | package.version == "line") {
-            if (dev.mode) p_v <- packageHistory0(x$package[i])
-            else p_v <- packageHistory(x$package[i], check.package = FALSE)
-                                
-            axis(3, at = p_v$Date, labels = p_v$Version, cex.axis = 2/3,
-              padj = 0.9, col.axis = "red", col.ticks = "red")
+            p_v <- pkgsearch::cran_package_history(x$package[i])
+            p_v$`crandb_file_date` <- as.Date(p_v$`crandb_file_date`)
+
+            axis(3, at = p_v$`crandb_file_date`, labels = p_v$Version,
+              cex.axis = 2/3, padj = 0.9, col.axis = "red", col.ticks = "red")
             
             if (package.version == "line") {
-              abline(v = p_v$Date, col = "red", lty = "dotted")
-            }        
+              abline(v = p_v$`crandb_file_date`, col = "red", lty = "dotted")
+            }
           }
 
           if (isTRUE(r.version) | r.version == "line") {
-            r_v <- rversions::r_versions()
-            r_date <- as.Date(r_v$date)
-            axis(3, at = r_date, labels = paste("R", r_v$version), 
-              cex.axis = 2/3, padj = 0.9)
+            axis(3, at = r_date, labels = r_v, cex.axis = 2/3, padj = 0.9)
             if (r.version == "line") abline(v = r_date, lty = "dotted")
           }
 
+          if (isTRUE(chatgpt) | chatgpt == "line") {
+            axis(3, at = chatgpt.release, labels = "ChatGPT", cex.axis = 0.6, 
+              padj = 0.9, col.axis = "blue", col.ticks = "blue")
+            if (chatgpt == "line") {
+              abline(v = chatgpt.release, col = "blue", lty = "dotted")  
+            }
+          }
+
           if (smooth) {
-            addSinglePlotSmoother(x, complete, current.wk, f, span,
-              wk1.backdate, y.nm)
+            smooth.data <- complete
+            if (nrow(smooth.data) > 7) {
+              smooth.data <- stats::loess(smooth.data[, y.nm] ~
+                as.numeric(smooth.data$date), span = span)
+              x.date <- as.Date(smooth.data$x)
+              lines(x.date, smooth.data$fitted, col = "blue", lwd = 1.25)
+            } else if (nrow(smooth.data) <= 7) {
+              lines(stats::lowess(smooth.data$date, smooth.data[, y.nm], f = f),
+                col = "blue", lwd = 1.25)
+            }
           }
           
           title(main = est.data$package)
+
+          if (smooth) {
+            if (nrow(dat) > 7) {
+              title(sub = paste("loess span =", round(span, 2)), cex.sub = 0.9)
+            } else if (nrow(dat) <= 7) {
+              title(sub = paste("lowess f =", round(f, 2)), cex.sub = 0.9)
+            }
+          }
         }))
 
       } else if (any(dat$partial)) { # unit.observation = "week"
         plot.data <- lapply(x$package, function(pkg) {
           pkg.dat <- dat[dat$package == pkg, ]
-
-          if (log.y) {
-            if (any(pkg.dat$count == 0)) {
-              zero.ct.pkg <- unique(pkg.dat[pkg.dat$count == 0, "package"])
-              pkg.dat[pkg.dat$count == 0, "count"] <- 1
-              for (p in zero.ct.pkg) {
-                pkg.dat$cumulative <- cumsum(pkg.dat[pkg.dat$package == p,
-                  "count"])
-              }
-            }
-          }
 
           unit.date <- pkg.dat$date
 
@@ -728,6 +820,8 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
               ylab = y.nm.case, xlim = xlim, ylim = ylim, pch = 16)
           }
 
+          missingDatesPolygons(dat, ylim, log.y = log.y)
+
           if (weekdays(x$from) == "Sunday") {
             points(wk1.partial[, c("date", y.nm)], pch = 16)
             segments(wk1.partial$date, wk1.partial[, y.nm],
@@ -768,44 +862,61 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
           }
 
           if (isTRUE(package.version) | package.version == "line") {
-            if (dev.mode) p_v <- packageHistory0(x$package[i])
-            else p_v <- packageHistory(x$package[i], check.package = FALSE)
-                        
-            axis(3, at = p_v$Date, labels = p_v$Version, cex.axis = 2/3,
-              padj = 0.9, col.axis = "red", col.ticks = "red")
-            
+            p_v <- pkgsearch::cran_package_history(x$package[i])
+            p_v$`crandb_file_date` <- as.Date(p_v$`crandb_file_date`)
+
+            axis(3, at = p_v$`crandb_file_date`, labels = p_v$Version,
+              cex.axis = 2/3, padj = 0.9, col.axis = "red", col.ticks = "red")
+
             if (package.version == "line") {
-              abline(v = p_v$Date, col = "red", lty = "dotted")
-            }        
+              abline(v = p_v$`crandb_file_date`, col = "red", lty = "dotted")
+            } 
           }
 
           if (isTRUE(r.version) | r.version == "line") {
-            r_v <- rversions::r_versions()
-            r_date <- as.Date(r_v$date)
-            axis(3, at = r_date, labels = paste("R", r_v$version), 
-              cex.axis = 2/3, padj = 0.9)
+            axis(3, at = r_date, labels = r_v, cex.axis = 2/3, padj = 0.9)
             if (r.version == "line") abline(v = r_date, lty = "dotted")
           }
 
+          if (isTRUE(chatgpt) | chatgpt == "line") {
+            axis(3, at = chatgpt.release, labels = "ChatGPT", cex.axis = 0.6, 
+              padj = 0.9, col.axis = "blue", col.ticks = "blue")
+            if (chatgpt == "line") {
+              abline(v = chatgpt.release, col = "blue", lty = "dotted")  
+            }
+          }
+
           if (smooth) {
-            addSinglePlotSmoother(x, complete, current.wk, f, span,
-              wk1.backdate, y.nm)
+            tmp <- rbind(wk1.backdate, complete)
+            
+            if (weekdays(last.obs.date) == "Saturday") {
+              tmp <- rbind(tmp, current.wk)
+            }
+            
+            if (nrow(tmp) > 7) {
+              smooth.data <- stats::loess(tmp[, y.nm] ~ as.numeric(tmp$date),
+                span = span)
+              x.date <- as.Date(smooth.data$x)
+              lines(x.date, smooth.data$fitted, col = "blue", lwd = 1.25)
+            } else if (nrow(tmp) <= 7){
+              smooth.data <- stats::lowess(tmp$date, tmp[, y.nm], f = f)
+              lines(stats::lowess(smooth.data$date, smooth.data[, y.nm], f = f),
+                col = "blue", lwd = 1.25)
+            }
           }
 
           title(main = wk1.backdate$package)
+
+          if (smooth) {
+            if (nrow(dat) > 7) {
+              title(sub = paste("loess span =", round(span, 2)), cex.sub = 0.9)
+            } else if (nrow(dat) <= 7) {
+              title(sub = paste("lowess f =", round(f, 2)), cex.sub = 0.9)
+            }
+          }
         }))
 
       } else {
-        if (log.y) {
-          if (any(dat$count == 0)) {
-            zero.ct.pkg <- unique(dat[dat$count == 0, "package"])
-            dat[dat$count == 0, "count"] <- 1
-            for (p in zero.ct.pkg) {
-              dat$cumulative <- cumsum(dat[dat$package == p, "count"])
-            }
-          }
-        }
-
         ylim <- range(dat[, y.nm])
 
         invisible(lapply(x$package, function(pkg) {
@@ -828,9 +939,14 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
               ylab = y.nm.case, xlim = xlim, ylim = ylim, pch = NA)
           }
 
+          missingDatesPolygons(dat, ylim, log.y = log.y)
+
           if (type == "o") {
-            points(wk.day$date, wk.day[, y.nm], pch = 16)
-            if (!weekend) points(wk.end$date, wk.end[, y.nm], pch = 16)
+            if (weekend) {
+              points(wk.day$date, wk.day[, y.nm], pch = 16)
+            } else {
+              points(pkg.dat$date, pkg.dat[, y.nm], pch = 16)
+            }
           }
 
           if (weekend) {
@@ -848,48 +964,57 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
           }
 
           if (isTRUE(package.version) | package.version == "line") {
-            if (dev.mode) p_v <- packageHistory0(pkg)
-            else p_v <- packageHistory(pkg, check.package = FALSE)
-            
-            axis(3, at = p_v$Date, labels = p_v$Version, cex.axis = 2/3,
-              padj = 0.9, col.axis = "red", col.ticks = "red")
-            
+            p_v <- pkgsearch::cran_package_history(pkg)
+            p_v$`crandb_file_date` <- as.Date(p_v$`crandb_file_date`)
+
+            axis(3, at = p_v$`crandb_file_date`, labels = p_v$Version,
+              cex.axis = 2/3, padj = 0.9, col.axis = "red", col.ticks = "red")
+
             if (package.version == "line") {
-              abline(v = p_v$Date, col = "red", lty = "dotted")
-            }        
+              abline(v = p_v$`crandb_file_date`, col = "red", lty = "dotted")
+            }
           }
 
           if (isTRUE(r.version) | r.version == "line") {
-            r_v <- rversions::r_versions()
-            r_date <- as.Date(r_v$date)
-            axis(3, at = r_date, labels = paste("R", r_v$version), 
-              cex.axis = 2/3, padj = 0.9)
+            axis(3, at = r_date, labels  = r_v, cex.axis = 2/3, padj = 0.9)
             if (r.version == "line") abline(v = r_date, lty = "dotted")
           }
 
+          if (isTRUE(chatgpt) | chatgpt == "line") {
+            axis(3, at = chatgpt.release, labels = "ChatGPT", cex.axis = 0.6, 
+              padj = 0.9, col.axis = "blue", col.ticks = "blue")
+            if (chatgpt == "line") {
+              abline(v = chatgpt.release, col = "blue", lty = "dotted")  
+            }
+          }
+
           if (smooth) {
-            if (nrow(pkg.dat) > 7) {
-              smooth.data <- stats::loess(pkg.dat[, y.nm] ~
-                as.numeric(pkg.dat$date), span = span)
-              x.date <- as.Date(smooth.data$x, origin = "1970-01-01")
+            if (any(packageRank::missing.dates %in% pkg.dat$date) ) {
+              sel <- !pkg.dat$date %in% packageRank::missing.dates
+              smooth.data <- pkg.dat[sel, ]
+            } else smooth.data <- pkg.dat
+            
+            if (nrow(smooth.data) > 7) {
+              smooth.data <- stats::loess(smooth.data[, y.nm] ~
+                as.numeric(smooth.data$date), span = span)
+              x.date <- as.Date(smooth.data$x)
               lines(x.date, smooth.data$fitted, col = "blue", lwd = 1.25)
-              title(sub = paste("loess span =", round(span, 2)), cex.sub = 0.9)
-            } else {
-              lines(stats::lowess(pkg.dat$date, pkg.dat[, y.nm], f = f),
+            } else if (nrow(smooth.data) <= 7) {
+              lines(stats::lowess(smooth.data$date, smooth.data[, y.nm], f = f),
                 col = "blue", lwd = 1.25)
+            }
+          }
+          
+          title(main = pkg)
+
+          if (smooth) {
+            if (nrow(dat) > 7) {
+              title(sub = paste("loess span =", round(span, 2)), cex.sub = 0.9)
+            } else if (nrow(dat) <= 7) {
               title(sub = paste("lowess f =", round(f, 2)), cex.sub = 0.9)
             }
           }
-          title(main = pkg)
         }))
-      }
-
-      if (isTRUE(chatgpt) | chatgpt == "line") {
-        axis(3, at = chatgpt.release, labels = "ChatGPT", cex.axis = 0.6, 
-          padj = 0.9, col.axis = "blue", col.ticks = "blue")
-        if (chatgpt == "line") {
-          abline(v = chatgpt.release, col = "blue", lty = "dotted")  
-        }
       }
 
       if (length(x$packages) > 1) grDevices::devAskNewPage(ask = FALSE)
@@ -898,43 +1023,27 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
   } else if (graphics == "ggplot2") {
     if (obs.ct == 1) {
       if (log.y) {
-        if (any(dat$count == 0)) {
-          zero.ct.pkg <- unique(dat[dat$count == 0, "package"])
-          dat[dat$count == 0, "count"] <- 1
-          for (p in zero.ct.pkg) {
-            dat$cumulative <- cumsum(dat[dat$package == p, "count"])
-          }
-        }
-
         dat$count <- log10(dat$count)
         dat$cumulative <- log10(dat$cumulative)
         p <- ggplot2::ggplot(data = dat, 
-               ggplot2::aes(x = .data[[statistic]], y = .data$package)) +
-             ggplot2::xlab(paste("log10", y.nm.case))
+               ggplot2::aes(x = .data[[statistic]], 
+                            y = .data$package)) +
+             ggplot2::labs(x = paste("log10", y.nm.case))
       } else {
         p <- ggplot2::ggplot(data = dat, 
-               ggplot2::aes(x = .data[[statistic]], y = .data$package)) +
-             ggplot2::xlab(y.nm.case)
+               ggplot2::aes(x = .data[[statistic]], 
+                            y = .data$package)) +
+             ggplot2::labs(x = y.nm.case)
       }
 
       p + ggplot2::geom_point(size = 1.5) +
-          ggplot2::ylab(NULL) +
+          ggplot2::labs(y = NULL) +
           ggplot2::theme_bw() +
           ggplot2::theme(panel.grid.major.x = ggplot2::element_blank(),
                          panel.grid.minor = ggplot2::element_blank()) +
-          ggplot2::facet_wrap(vars(.data$date))
+          ggplot2::facet_wrap(ggplot2::vars(.data$date))
 
     } else if (obs.ct > 1) {
-      if (log.y) {
-        if (any(dat$count == 0)) {
-          zero.ct.pkg <- unique(dat[dat$count == 0, "package"])
-          dat[dat$count == 0, "count"] <- 1
-          for (p in zero.ct.pkg) {
-            dat$cumulative <- cumsum(dat[dat$package == p, "count"])
-          }
-        }
-      }
-
       if (statistic == "count") {
         p <- ggplot2::ggplot(data = dat, 
                ggplot2::aes(x = .data$date, y = .data$count))
@@ -942,6 +1051,9 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
         p <- ggplot2::ggplot(data = dat, 
                ggplot2::aes(x = .data$date, y = .data$cumulative))
       }
+
+      p <- gg_axis.annotation_polygon(dat, p, log.y, chatgpt, r.version,
+        chatgpt.release)
 
       if (any(dat$in.progress)) {
         est.ct <- inProgressEstimate(x, unit.observation)
@@ -1141,9 +1253,9 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
 
       if (log.y) {
         p <- p + ggplot2::scale_y_log10() + 
-                 ggplot2::ylab(paste("log10", y.nm.case))
+                 ggplot2::labs(y = paste("log10", y.nm.case))
       } else {
-        p <- p + ggplot2::ylab(y.nm.case)
+        p <- p + ggplot2::labs(y = y.nm.case)
       }
       
       if (smooth) {
@@ -1151,7 +1263,6 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
           smooth.data <- complete
           p <- p + ggplot2::geom_smooth(data = smooth.data, method = "loess",
             formula = "y ~ x", se = se, span = span)
-        
         } else if (any(dat$partial)) {
           smooth.data <- rbind(complete, wk1.backdate.seg)
           
@@ -1163,13 +1274,20 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
             formula = "y ~ x", se = se, span = span)
         
         } else {
-          p <- p + ggplot2::geom_smooth(method = "loess", formula = "y ~ x", 
-            se = se, span = span)
+          if (any(packageRank::missing.dates %in% dat$date)) {
+            smooth.data <- dat[!dat$date %in% packageRank::missing.dates, ]
+            p <- p + ggplot2::geom_smooth(data = smooth.data, method = "loess", 
+              formula = "y ~ x",  se = se, span = span)
+          } else {
+            p <- p + ggplot2::geom_smooth(method = "loess", formula = "y ~ x", 
+              se = se, span = span)  
+          }
         }
       }
 
-      p <- p + ggplot2::facet_wrap(ggplot2::vars(.data$package), nrow = 2) +
-               ggplot2::xlab("Date") +
+      p <- p + ggplot2::facet_wrap(ggplot2::vars(.data$package),
+                 nrow = 2) +
+               ggplot2::labs(x = "Date") +
                ggplot2::theme_bw() +
                ggplot2::theme(legend.position = "bottom",
                               panel.grid.major = ggplot2::element_blank(),
@@ -1182,7 +1300,7 @@ singlePlot <- function(x, statistic, graphics, obs.ct, points, smooth,
 
 multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
   legend.location, ip.legend.location, points, smooth, se, f, span,
-  unit.observation, chatgpt, chatgpt.release, weekend) {
+  r.version, unit.observation, chatgpt, chatgpt.release, weekend) {
 
   dat <- x$cranlogs.data
   last.obs.date <- x$last.obs.date
@@ -1194,16 +1312,15 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
     ttl <- "Cumulative Package Downloads"
   }
 
+  if (isTRUE(r.version) | r.version == "line") {  
+    rvers.data <- rversions::r_versions()
+    r_date <- as.Date(rvers.data$date)
+    r_v <- paste("R", rvers.data$version)
+  }
+
   if (graphics == "base") {
     if (obs.ct == 1) {
       if (log.y) {
-        if (any(dat$count == 0)) {
-          zero.ct.pkg <- unique(dat[dat$count == 0, "package"])
-          dat[dat$count == 0, "count"] <- 1
-          for (p in zero.ct.pkg) {
-            dat$cumulative <- cumsum(dat[dat$package == p, "count"])
-          }
-        }
         dotchart(log10(dat[, statistic]), labels = dat$package,
           xlab = paste("log10", y.nm.case), main = paste(ttl, unique(dat$date)))
       } else {
@@ -1234,16 +1351,6 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
           pkg.data <- lapply(x$package, function(pkg) {
             tmp <- dat[dat$package == pkg, ]
 
-            if (log.y) {
-              if (any(tmp$count == 0)) {
-                zero.ct.pkg <- unique(tmp[tmp$count == 0, "package"])
-                tmp[tmp$count == 0, "count"] <- 1
-                for (p in zero.ct.pkg) {
-                  tmp$cumulative <- cumsum(tmp[tmp$package == p, "count"])
-                }
-              }
-            }
-
             ip.data <- tmp[tmp$in.progress == TRUE, ]
             complete <- tmp[tmp$in.progress == FALSE, ]
             last.obs <- nrow(complete)
@@ -1267,6 +1374,8 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
             plot(dat[, vars], pch = NA, xlim = xlim, ylim = ylim, main = ttl, 
               xlab = "Date", ylab = y.nm.case)
           }
+
+          missingDatesPolygons(dat, ylim, log.y = log.y)
 
           invisible(lapply(seq_along(pkg.data), function(i) {
             complete <- pkg.data[[i]]$complete
@@ -1298,8 +1407,16 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
             }
 
             if (smooth) {
-              addMultiPlotSmoother(i, x, complete, cbPalette, f, span,
-                statistic, vars, NULL)
+              smooth.data <- complete
+              if (nrow(smooth.data) > 7) {
+                smooth.data <- stats::loess(smooth.data[, statistic] ~
+                  as.numeric(smooth.data$date), span = span)
+                x.date <- as.Date(smooth.data$x)
+                lines(x.date, smooth.data$fitted, col = cbPalette[i])
+              } else if (nrow(smooth.data) <= 7) {
+                lines(stats::lowess(smooth.data$date, smooth.data[, statistic], 
+                  f = f), col = cbPalette[i])
+              }
             }
           }))
 
@@ -1315,18 +1432,6 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
         } else if (any(dat$partial)) {
           plot.data <- lapply(x$package, function(pkg) {
             pkg.dat <- dat[dat$package == pkg, ]
-
-            if (log.y) {
-              if (any(pkg.dat$count == 0)) {
-                zero.ct.pkg <- unique(pkg.dat[pkg.dat$count == 0, "package"])
-                pkg.dat[pkg.dat$count == 0, "count"] <- 1
-                for (p in zero.ct.pkg) {
-                  pkg.dat$cumulative <- cumsum(pkg.dat[pkg.dat$package == p,
-                    "count"])
-                }
-              }
-            }
-
             unit.date <- pkg.dat$date
 
             wk1.start <- pkg.dat$date[1]
@@ -1408,6 +1513,8 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
                xlab = "Date", ylab = y.nm.case)
           }
 
+          missingDatesPolygons(dat, ylim, log.y = log.y)
+
           invisible(lapply(seq_along(plot.data), function(i) {
             pkg.dat <- plot.data[[i]]$pkg.dat
             wk1.partial <- plot.data[[i]]$wk1.partial
@@ -1467,8 +1574,21 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
              }
 
             if (smooth) {
-              addMultiPlotSmoother(i, x, complete, cbPalette, f, span,
-                statistic, vars, wk1.backdate)
+              tmp <- rbind(wk1.backdate, complete)
+
+              if (weekdays(last.obs.date) == "Saturday") {
+                tmp <- rbind(tmp, current.wk)
+              }
+
+              if (nrow(tmp) > 7) {
+                smooth.data <- stats::loess(tmp[, statistic] ~
+                  as.numeric(tmp$date), span = span)
+                x.date <- as.Date(smooth.data$x)
+                lines(x.date, smooth.data$fitted, col = cbPalette[i])
+              } else if (nrow(tmp) <= 7) {
+                smooth.data <- stats::lowess(tmp$date, tmp[, statistic], f = f)
+                lines(smooth.data$x, smooth.data$y, col = cbPalette[i])
+              }
             }
           }))
 
@@ -1483,19 +1603,14 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
 
         } else {
           if (log.y) {
-            if (any(dat$count == 0)) {
-              zero.ct.pkg <- unique(dat[dat$count == 0, "package"])
-              dat[dat$count == 0, "count"] <- 1
-              for (p in zero.ct.pkg) {
-                dat$cumulative <- cumsum(dat[dat$package == p, "count"])
-              }
-            }
             plot(dat[, vars], pch = NA, log = "y", xlim = xlim, ylim = ylim,
               main = ttl, xlab = "Date", ylab = paste("log10", y.nm.case))
           } else {
             plot(dat[, vars], pch = NA, xlim = xlim, ylim = ylim, main = ttl,
               xlab = "Date", ylab = y.nm.case)
           }
+
+          missingDatesPolygons(dat, ylim, log.y = log.y)
 
           invisible(lapply(seq_along(x$packages), function(i) {
             tmp <- dat[dat$package == x$packages[i], ]
@@ -1509,11 +1624,11 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
             }
 
             if (type == "o") {
-              points(wk.day$date, wk.day[, statistic], col = cbPalette[i], 
-                pch = 16)
-              if (!weekend) {
-                points(wk.end$date, wk.end[, statistic], col = cbPalette[i],
+              if (weekend) {
+                points(wk.day$date, wk.day[, statistic], col = cbPalette[i],
                   pch = 16)
+              } else {
+                points(tmp$date, tmp[, statistic], col = cbPalette[i], pch = 16)
               }
             }
 
@@ -1535,8 +1650,20 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
             }
 
             if (smooth) {
-              addMultiPlotSmoother(i, x, NULL, cbPalette, f, span,
-                statistic, vars, NULL)
+              if (any(packageRank::missing.dates %in% dat$date) ) {
+                smooth.data <- tmp[!tmp$date %in% packageRank::missing.dates, ]
+              } else smooth.data <- dat
+
+              if (nrow(smooth.data) > 7) {
+                smooth.data <- stats::loess(smooth.data[, statistic] ~ 
+                  as.numeric(smooth.data$date), span = span)
+                x.date <- as.Date(smooth.data$x, origin = "1970-01-01")
+                lines(x.date, smooth.data$fitted, col = cbPalette[i])
+              } else if (nrow(smooth.data) <= 7) {
+                sel <- smooth.data$package == x$packages[i]
+                lines(stats::lowess(smooth.data[sel, vars], f = f),
+                  col = cbPalette[i])
+              }
             }
           }))
         }
@@ -1568,7 +1695,7 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
         if (smooth) {
           if (nrow(dat) > 7) {
             title(sub = paste("loess span =", round(span, 2)), cex.sub = 0.9)
-          } else {
+          } else if (nrow(dat) <= 7) {
             title(sub = paste("lowess f =", round(f, 2)), cex.sub = 0.9)
           }
         }
@@ -1585,24 +1712,15 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
   } else if (graphics == "ggplot2") {
     if (obs.ct == 1) {
       if (log.y) {
-        # p + scale_x_log10() doesn't work!
-        if (any(dat$count == 0)) {
-          zero.ct.pkg <- unique(dat[dat$count == 0, "package"])
-          dat[dat$count == 0, "count"] <- 1
-          for (p in zero.ct.pkg) {
-            dat$cumulative <- cumsum(dat[dat$package == p, "count"])
-          }
-        }
-
         dat$count <- log10(dat$count)
         dat$cumulative <- log10(dat$cumulative)
         p <- ggplot2::ggplot(data = dat, 
                ggplot2::aes(x = .data[[statistic]], y = .data$package)) +
-             ggplot2::xlab(paste("log10", y.nm.case))
+             ggplot2::labs(x = paste("log10", y.nm.case))
       } else {
         p <- ggplot2::ggplot(data = dat, 
                ggplot2::aes(x = .data[[statistic]], y = .data$package)) +
-             ggplot2::xlab(y.nm.case)
+             ggplot2::labs(x = y.nm.case)
       }
 
       p + ggplot2::geom_point(size = 2) + 
@@ -1611,31 +1729,24 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
         ggplot2::theme_bw() +
         ggplot2::theme(panel.grid.major = ggplot2::element_blank(),
                        panel.grid.minor = ggplot2::element_blank()) +
-        ggplot2::facet_wrap(vars(.data$date))
+        ggplot2::facet_wrap(ggplot2::vars(.data$date))
         
     } else if (obs.ct > 1) {
-      if (log.y) {
-        if (any(dat$count == 0)) {
-          zero.ct.pkg <- unique(dat[dat$count == 0, "package"])
-          dat[dat$count == 0, "count"] <- 1
-          for (p in zero.ct.pkg) {
-            dat$cumulative <- cumsum(dat[dat$package == p, "count"])
-          }
-        }
-      }
-      
       if (statistic == "count") {
         p <- ggplot2::ggplot(data = dat, 
                 ggplot2::aes(x = .data$date, y = .data$count, 
                   colour = .data$package)) + 
-             ggplot2::ggtitle("Package Download Counts")
+             ggplot2::labs(title = "Package Download Counts")
       
       } else if (statistic == "cumulative") {
         p <- ggplot2::ggplot(data = dat, 
                ggplot2::aes(x = .data$date, y = .data$cumulative, 
-                colour = .data$package)) + 
-             ggplot2::ggtitle("Cumulative Package Downloads")
+                 colour = .data$package)) + 
+             ggplot2::labs(title = "Cumulative Package Downloads")
       }
+
+      p <- gg_axis.annotation_polygon(dat, p, log.y, chatgpt, r.version,
+        chatgpt.release)
 
       if (any(dat$in.progress)) {
         est.ct <- inProgressEstimate(x, unit.observation)
@@ -1787,9 +1898,8 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
             values = c(8, 0, 1))
 
         if (weekdays(last.obs.date) == "Saturday") {
-          p <- p +
-            ggplot2::geom_line(data = current.wk.seg, linewidth = 1/3) +
-            ggplot2::geom_point(data = current.wk)
+          p <- p + ggplot2::geom_line(data = current.wk.seg, linewidth = 1/3) +
+                   ggplot2::geom_point(data = current.wk)
         } else {
           p <- p +
             ggplot2::geom_line(data = current.wk.seg, linewidth = 1/3,
@@ -1803,9 +1913,8 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
         }
 
         if (weekdays(x$from) == "Sunday") {
-          p <- p +
-            ggplot2::geom_line(data = wk1.partial.seg, linewidth = 1/3) +
-            ggplot2::geom_point(data = wk1.partial)
+          p <- p + ggplot2::geom_line(data = wk1.partial.seg, linewidth = 1/3) +
+                   ggplot2::geom_point(data = wk1.partial)
         } else {
           p <- p +
             ggplot2::geom_line(data = wk1.backdate.seg, linewidth = 1/3,
@@ -1826,9 +1935,9 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
 
       if (log.y) {
         p <- p + ggplot2::scale_y_log10() + 
-                 ggplot2::ylab(paste("log10", y.nm.case))
+                 ggplot2::labs(y = paste("log10", y.nm.case))
       } else {
-        p <- p + ggplot2::ylab(y.nm.case)
+        p <- p + ggplot2::labs(y = y.nm.case)
       }
 
       if (smooth) {
@@ -1836,7 +1945,6 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
           smooth.data <- complete
           p <- p + ggplot2::geom_smooth(data = smooth.data, method = "loess",
             formula = "y ~ x", se = se, span = span)
-        
         } else if (any(dat$partial)) {
           smooth.data <- rbind(complete, wk1.backdate)
           if (weekdays(last.obs.date) == "Saturday") {
@@ -1847,13 +1955,19 @@ multiPlot <- function(x, statistic, graphics, obs.ct, log.y,
             formula = "y ~ x", se = se, span = span)
         
         } else {
-          p <- p + ggplot2::geom_smooth(method = "loess", formula = "y ~ x", 
-            se = se, span = span)
+          if (any(packageRank::missing.dates %in% dat$date)) {
+            smooth.data <- dat[!dat$date %in% packageRank::missing.dates, ]
+            p <- p + ggplot2::geom_smooth(data = smooth.data, 
+              method = "loess", formula = "y ~ x",  se = se, span = span)
+          } else {
+            p <- p + ggplot2::geom_smooth(method = "loess", formula = "y ~ x",
+              se = se, span = span)
+          }
         }
       }
       
       p <- p + ggplot2::theme_bw() +
-               ggplot2::xlab("Date") +
+               ggplot2::labs(x = "Date") +
                ggplot2::theme(legend.position = "bottom",
                               panel.grid.major = ggplot2::element_blank(),
                               panel.grid.minor = ggplot2::element_blank(),
@@ -1874,6 +1988,12 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
   last.obs.date <- x$last.obs.date
   type <- ifelse(points, "o", "l")
 
+  if (isTRUE(r.version) | r.version == "line") {  
+    rvers.data <- rversions::r_versions()
+    r_date <- as.Date(rvers.data$date)
+    r_v <- paste("R", rvers.data$version)
+  }
+
   if (obs.ct == 1) {
     if (graphics == "base") {
       if (log.y) {
@@ -1891,21 +2011,23 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
         dat$cumulative <- log10(dat$cumulative)
         
         p <- ggplot2::ggplot(data = dat, 
-               ggplot2::aes(x = .data[[statistic]], y = .data$platform)) +
-             ggplot2::xlab(paste("log10", y.nm.case))
+               ggplot2::aes(x = .data[[statistic]], 
+                            y = .data$platform)) +
+             ggplot2::labs(x = paste("log10", y.nm.case))
       } else {
         p <- ggplot2::ggplot(data = dat, 
-               ggplot2::aes(x = .data[[statistic]], y = .data$platform)) +
-             ggplot2::xlab(y.nm.case)
+               ggplot2::aes(x = .data[[statistic]], 
+                            y = .data$platform)) +
+             ggplot2::labs(x = y.nm.case)
              
       }
 
       ttl <- paste("R Application Downloads:", unique(dat$date))
       
       p + ggplot2::geom_point(size = 2) +
-          ggplot2::ylab(NULL) +
+          ggplot2::labs(y = NULL) +
           ggplot2::theme_bw() +
-          ggplot2::ggtitle(ttl) +
+          ggplot2::labs(title = ttl) +
           ggplot2::theme(panel.grid.major.x = ggplot2::element_blank(),
                          panel.grid.minor = ggplot2::element_blank(),
                          plot.title = ggplot2::element_text(hjust = 0.5))
@@ -1951,6 +2073,8 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
           plot(dat$date, dat[, statistic], pch = NA, xlab = "Date", 
             ylab = y.nm.case, ylim = ylim)
         }
+
+        missingDatesPolygons(dat, ylim, log.y = log.y)
 
         if (points) {
           invisible(lapply(seq_along(complete), function(i) {
@@ -2100,6 +2224,8 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
             ylab = y.nm.case, ylim = ylim)
         }
 
+        missingDatesPolygons(dat, ylim, log.y = log.y)
+
         if (points) {
           invisible(lapply(seq_along(complete), function(i) {
             tmp <- complete[[i]]
@@ -2187,17 +2313,20 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
           wk.day <- dat[!wknd, ]
         }
 
+        ylim <- range(dat[, statistic])
+
         if (log.y) {
           plot(dat[dat$platform == "win", "date"],
                dat[dat$platform == "win", statistic],
-               pch = NA, ylim = range(dat[, statistic]),
-               xlab = "Date", ylab = paste("log10", y.nm.case), log = "y")
+               pch = NA, ylim = ylim, xlab = "Date",
+               ylab = paste("log10", y.nm.case), log = "y")
         } else {
           plot(dat[dat$platform == "win", "date"],
                dat[dat$platform == "win", statistic],
-               pch = NA, ylim = range(dat[, statistic]),
-               xlab = "Date", ylab = y.nm.case)
+               pch = NA, ylim = ylim, xlab = "Date", ylab = y.nm.case)
         }
+
+        missingDatesPolygons(dat, ylim, log.y = log.y)
 
         pltfrm <- sort(unique(dat$platform))
         pltfrm.col <- c("red", "dodgerblue", "black")
@@ -2210,13 +2339,13 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
 
         if (type == "o") {
           invisible(lapply(seq_along(pltfrm), function(i) {
-            sel <- wk.day$platform == pltfrm[i]
-            points(wk.day[sel, "date"], wk.day[sel, statistic], 
-              col = pltfrm.col[i], pch = 16)
-          
-            if (!weekend) {
-              sel <- wk.end$platform == pltfrm[i]
-              points(wk.end[sel, "date"], wk.end[sel, statistic], 
+            if (weekend) {
+              sel <- wk.day$platform == pltfrm[i]
+              points(wk.day[sel, "date"], wk.day[sel, statistic], 
+                col = pltfrm.col[i], pch = 16)
+            } else {
+              sel <- dat$platform == pltfrm[i]
+              points(dat[sel, "date"], dat[sel, statistic], 
                 col = pltfrm.col[i], pch = 16)
             }
           }))
@@ -2276,10 +2405,7 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
       }
 
       if (isTRUE(r.version) | r.version == "line") {
-        r_v <- rversions::r_versions()
-        r_date <- as.Date(r_v$date)
-        axis(3, at = r_date, labels = paste("R", r_v$version), 
-          cex.axis = 2/3, padj = 0.9)
+        axis(3, at = r_date, labels = r_v, cex.axis = 2/3, padj = 0.9)
         if (r.version == "line") abline(v = r_date, lty = "dotted")
       }
 
@@ -2297,8 +2423,9 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
       if (statistic == "count") {
         if (multi.plot) {
           p <- ggplot2::ggplot(data = dat, 
-                 ggplot2::aes(x = .data$date, y = .data$count,
-                   colour = .data$platform))
+                 ggplot2::aes(x = .data$date, 
+                              y = .data$count,
+                              colour = .data$platform))
         } else {
           p <- ggplot2::ggplot(data = dat, 
                  ggplot2::aes(x = .data$date, y = .data$count)) +
@@ -2307,8 +2434,9 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
       } else if (statistic == "cumulative") {
         if (multi.plot) {
           p <- ggplot2::ggplot(data = dat, 
-                 ggplot2::aes(x = .data$date, y = .data$cumulative, 
-                   colour = .data$platform))
+                 ggplot2::aes(x = .data$date,
+                              y = .data$cumulative, 
+                              colour = .data$platform))
         } else {
           p <- ggplot2::ggplot(data = dat, 
                  ggplot2::aes(x = .data$date, y = .data$cumulative)) +
@@ -2316,8 +2444,10 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
         }
       }
 
+      p <- gg_axis.annotation_polygon(dat, p, log.y, chatgpt, r.version,
+        chatgpt.release)
+
       if (any(dat$in.progress)) {
-        # pltfrm <- sort(unique(dat$platform))
         pltfrm <- c("osx", "src", "win")
 
         est.ct <- inProgressEstimate(x, unit.observation)
@@ -2400,7 +2530,7 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
         if (points) p <- p + ggplot2::geom_point(data = complete)
 
         p <- p + ggplot2::theme_bw() +
-                 ggplot2::ggtitle("R Application Downloads") +
+                 ggplot2::labs(title = "R Application Downloads") +
                  ggplot2::theme(legend.position = "bottom",
                                 panel.grid.major = ggplot2::element_blank(),
                                 panel.grid.minor = ggplot2::element_blank(),
@@ -2525,9 +2655,8 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
         }
 
         if (weekdays(last.obs.date) == "Saturday") {
-          p <- p +
-            ggplot2::geom_line(data = current.wk.seg, linewidth = 1/3) +
-            ggplot2::geom_point(data = current.wk)
+          p <- p + ggplot2::geom_line(data = current.wk.seg, linewidth = 1/3) +
+                   ggplot2::geom_point(data = current.wk)
         } else {
           if (multi.plot) {
             p <- p +
@@ -2555,9 +2684,8 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
         }
 
         if (weekdays(x$from) == "Sunday") {
-          p <- p +
-            ggplot2::geom_line(data = wk1.partial.seg, linewidth = 1/3) +
-            ggplot2::geom_point(data = wk1.partial)
+          p <- p + ggplot2::geom_line(data = wk1.partial.seg, linewidth = 1/3) +
+                   ggplot2::geom_point(data = wk1.partial)
         } else {
           if (multi.plot) {
             p <- p +
@@ -2596,9 +2724,9 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
 
       if (log.y) {
         p <- p + ggplot2::scale_y_log10() + 
-          ggplot2::ylab(paste("log10", y.nm.case))
+                 ggplot2::labs(y = paste("log10", y.nm.case))
       } else {
-        p <- p + ggplot2::ylab(y.nm.case)
+        p <- p + ggplot2::labs(y = y.nm.case)
       }
 
       if (smooth) {
@@ -2614,14 +2742,20 @@ rPlot <- function(x, statistic, graphics, obs.ct, legend.location,
           p <- p + ggplot2::geom_smooth(data = smooth.data, method = "loess",
             formula = "y ~ x", se = se, span = span)
         } else {
-          p <- p + ggplot2::geom_smooth(method = "loess", formula = "y ~ x", 
-            se = se, span = span)
+          if (any(packageRank::missing.dates %in% dat$date)) {
+            smooth.data <- dat[!dat$date %in% packageRank::missing.dates, ]
+            p <- p + ggplot2::geom_smooth(data = smooth.data, 
+              method = "loess", formula = "y ~ x",  se = se, span = span)
+          } else {
+            p <- p + ggplot2::geom_smooth(method = "loess", formula = "y ~ x",
+              se = se, span = span)
+          }
         }
       }
 
       p <- p + ggplot2::theme_bw() +
-               ggplot2::xlab("Date") +
-               ggplot2::ggtitle("Total R Application Downloads") +
+               ggplot2::labs(x = "Date") +
+               ggplot2::labs(title = "Total R Application Downloads") +
                ggplot2::theme(legend.position = "bottom",
                               panel.grid.major = ggplot2::element_blank(),
                               panel.grid.minor = ggplot2::element_blank(),
@@ -2639,6 +2773,12 @@ rTotPlot <- function(x, statistic, graphics, obs.ct, legend.location, points,
   dat <- x$cranlogs.data
   last.obs.date <- x$last.obs.date
   ct <- tapply(dat$count, dat$date, sum)
+
+  if (isTRUE(r.version) | r.version == "line") {  
+    rvers.data <- rversions::r_versions()
+    r_date <- as.Date(rvers.data$date)
+    r_v <- paste("R", rvers.data$version)
+  }
 
   if (any(dat$in.progress)) {
     dat <- data.frame(date = unique(dat$date),
@@ -2682,20 +2822,20 @@ rTotPlot <- function(x, statistic, graphics, obs.ct, legend.location, points,
         p <- ggplot2::ggplot(data = dat, 
                ggplot2::aes(x = .data[[statistic]], y = .data$platform)) +
              ggplot2::geom_point(size = 2) + 
-             ggplot2::xlab(paste("log10", y.nm.case)) + 
-             ggplot2::ylab(NULL)
+             ggplot2::labs(x = paste("log10", y.nm.case)) + 
+             ggplot2::labs(y = NULL)
       
       } else {
         p <- ggplot2::ggplot(data = dat, 
                ggplot2::aes(x = .data[[statistic]], y = .data$platform)) +
              ggplot2::geom_point(size = 2) + 
-             ggplot2::ylab(NULL)
+             ggplot2::labs(y = NULL)
       }
 
       ttl <- paste("R Application Downloads:", unique(dat$date))
 
       p + ggplot2::theme_bw() +
-          ggplot2::ggtitle(ttl) +
+          ggplot2::labs(title = ttl) +
           ggplot2::theme(panel.grid.major.x = ggplot2::element_blank(),
                          panel.grid.minor = ggplot2::element_blank(),
                          plot.title = ggplot2::element_text(hjust = 0.5))
@@ -2730,6 +2870,8 @@ rTotPlot <- function(x, statistic, graphics, obs.ct, legend.location, points,
           plot(complete[, vars], type = type, xlab = "Date", ylab = y.nm.case,
             xlim = xlim, ylim = ylim, pch = 16)
         }
+
+        missingDatesPolygons(dat, ylim, log.y = log.y)
 
         points(ip.data[, vars], col = "black", pch = 0)
         points(est.data[, vars], col = "red", pch = 1)
@@ -2821,6 +2963,8 @@ rTotPlot <- function(x, statistic, graphics, obs.ct, legend.location, points,
             xlim = xlim, ylim = ylim, pch = 16)
         }
 
+        missingDatesPolygons(dat, ylim, log.y = log.y)
+
         if (weekdays(x$from) == "Sunday") {
           points(wk1.partial[, vars], pch = 16)
           segments(wk1.partial$date, wk1.partial[, statistic],
@@ -2875,9 +3019,15 @@ rTotPlot <- function(x, statistic, graphics, obs.ct, legend.location, points,
             pch = NA)
         }
 
+        ylim <- range(dat[, statistic])
+        missingDatesPolygons(dat, ylim, log.y = log.y)
+
         if (type == "o") {
-          points(wk.day$date, wk.day[, statistic], pch = 16)
-          if (!weekend) points(wk.end$date, wk.end[, statistic], pch = 16)
+          if (weekend) {
+            points(wk.day$date, wk.day[, statistic], pch = 16)
+          } else {
+            points(dat$date, dat[, statistic], pch = 16)
+          }
         }
 
         if (weekend) {
@@ -2900,10 +3050,7 @@ rTotPlot <- function(x, statistic, graphics, obs.ct, legend.location, points,
       }
 
       if (isTRUE(r.version) | r.version == "line") {
-        r_v <- rversions::r_versions()
-        r_date <- as.Date(r_v$date)
-        axis(3, at = r_date, labels = paste("R", r_v$version), cex.axis = 2/3,
-          padj = 0.9)
+        axis(3, at = r_date, labels = r_v, cex.axis = 2/3, padj = 0.9)
         if (r.version == "line") abline(v = r_date, lty = "dotted")
       }
 
@@ -2925,6 +3072,9 @@ rTotPlot <- function(x, statistic, graphics, obs.ct, legend.location, points,
         p <- ggplot2::ggplot(data = dat,
                ggplot2::aes(x = .data$date, y = .data$cumulative))
       }
+
+      p <- gg_axis.annotation_polygon(dat, p, log.y, chatgpt, r.version,
+        chatgpt.release)
 
       if (any(dat$in.progress)) {
         ip.sel <- dat$in.progress == TRUE
@@ -3083,9 +3233,9 @@ rTotPlot <- function(x, statistic, graphics, obs.ct, legend.location, points,
 
       if (log.y) {
         p <- p + ggplot2::scale_y_log10() + 
-                 ggplot2::ylab(paste("log10", y.nm.case))
+                 ggplot2::labs(y = paste("log10", y.nm.case))
       } else {
-        p <- p + ggplot2::ylab(y.nm.case)
+        p <- p + ggplot2::labs(y = y.nm.case)
       }
 
       if (smooth) {
@@ -3098,14 +3248,20 @@ rTotPlot <- function(x, statistic, graphics, obs.ct, legend.location, points,
           p <- p + ggplot2::geom_smooth(data = smooth.data, method = "loess",
             formula = "y ~ x", se = se, span = span)
         } else {
-          p <- p + ggplot2::geom_smooth(method = "loess", formula = "y ~ x", 
-            se = se, span = span)
+          if (any(packageRank::missing.dates %in% dat$date)) {
+            smooth.data <- dat[!dat$date %in% packageRank::missing.dates, ]
+            p <- p + ggplot2::geom_smooth(data = smooth.data, 
+              method = "loess", formula = "y ~ x",  se = se, span = span)
+          } else {
+            p <- p + ggplot2::geom_smooth(method = "loess", formula = "y ~ x", 
+              se = se, span = span)
+          }
         }
       }
 
       p <- p + ggplot2::theme_bw() +
-               ggplot2::xlab("Date") +
-               ggplot2::ggtitle("Total R Application Downloads") +
+               ggplot2::labs(x = "Date") +
+               ggplot2::labs(title = "Total R Application Downloads") +
                ggplot2::theme(legend.position = "bottom",
                                panel.grid.major = ggplot2::element_blank(),
                                panel.grid.minor = ggplot2::element_blank(),

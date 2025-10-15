@@ -8,6 +8,7 @@
 #' @param sequence.filter Logical.
 #' @param size.filter Logical.
 #' @param small.filter Logical. TRUE filters out downloads less than 1000 bytes.
+#' @param version.filter Logical. TRUE selects only most recent version.
 #' @param memoization Logical. Use memoization when downloading logs.
 #' @param check.package Logical. Validate and "spell check" package.
 #' @param multi.core Logical or Numeric. \code{TRUE} uses \code{parallel::detectCores()}. \code{FALSE} uses one, single core. You can also specify the number logical cores.
@@ -16,8 +17,8 @@
 
 packageLog <- function(packages = "cholera", date = NULL, all.filters = FALSE,
   ip.filter = FALSE, sequence.filter = FALSE, size.filter = FALSE, 
-  small.filter = FALSE, memoization = TRUE, check.package = TRUE,
-  multi.core = FALSE) {
+  small.filter = FALSE, version.filter = FALSE, memoization = TRUE, 
+  check.package = TRUE, multi.core = FALSE) {
 
   if (!curl::has_internet()) stop("Check internet connection.", call. = FALSE)
   if (check.package) packages <- checkPackage(packages)
@@ -28,10 +29,10 @@ packageLog <- function(packages = "cholera", date = NULL, all.filters = FALSE,
     cores <- multiCore(multi.core)
   }
   
-  file.url.date <- logDate(date)
-  cran_log <- fetchCranLog(date = file.url.date, memoization = memoization)
+  log.date <- logDate(date)
+  cran_log <- fetchCranLog(date = log.date, memoization = memoization)
   cran_log <- cleanLog(cran_log)
-  ymd <- rev_fixDate_2012(file.url.date)
+  ymd <- rev_fixDate_2012(log.date)
 
   unobs.pkgs <- !packages %in% cran_log$package
   if (any(unobs.pkgs)) pkg.msg <- paste(packages[unobs.pkgs], collapse = ", ")
@@ -46,25 +47,30 @@ packageLog <- function(packages = "cholera", date = NULL, all.filters = FALSE,
   if (all.filters) {
     ip.filter <- TRUE
     small.filter <- TRUE
-    sequence.filter <- TRUE
     size.filter <- TRUE
+    version.filter <- TRUE
   }
   
-  if (ip.filter) cran_log <- ipFilter(cran_log)
+  if (ip.filter) cran_log <- ipFilter(cran_log, multi.core = FALSE)
   
-  out <- parallel::mclapply(packages, function(p) {
-    pkg.data <- cran_log[cran_log$package == p, ]
-    if (nrow(pkg.data) != 0) {
-      if (small.filter) pkg.data <- smallFilter(pkg.data)
-
-      pkg.data$date.time <- dateTime(pkg.data$date, pkg.data$time)
-      if (sequence.filter) pkg.data <- sequenceFilter(pkg.data, p, ymd)
+  pkg.data <- lapply(packages, function(p) cran_log[cran_log$package == p, ])
+  
+  out <- parallel::mclapply(seq_along(pkg.data), function(i) { 
+    p.dat <- pkg.data[[i]]
+    p <- packages[i]
+    
+    if (nrow(p.dat) != 0) {
+      if (small.filter) p.dat <- smallFilter(p.dat)
       
-      if (size.filter) pkg.data <- sizeFilter(pkg.data, p)
-      pkg.data <- pkg.data[order(pkg.data$date.time), ]
-      pkg.data$date.time <- NULL
+      p.dat$date.time <- dateTime(p.dat$date, p.dat$time)
+      if (sequence.filter) p.dat <- sequenceFilter(p.dat, p, ymd)
+      
+      if (size.filter) p.dat <- sizeFilter(p.dat, p)
+      if (version.filter) p.dat <- versionFilter(p.dat, p, ymd)
+      p.dat <- p.dat[order(p.dat$date.time), ]
+      p.dat$date.time <- NULL
     }
-    pkg.data
+    p.dat
   }, mc.cores = cores)
   
   names(out) <- packages

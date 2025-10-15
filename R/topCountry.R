@@ -66,8 +66,8 @@ plotTopCountryCodes <- function(dataset = "october", second.place = FALSE) {
     sugrrants::facet_calendar(~ as.Date(date), week_start = 7) +
     ggplot2::scale_x_continuous(limits = c(0.5, max(dat$id) + 0.5)) +
     ggplot2::scale_y_continuous(breaks = c(0, 1, 2), limits = c(0, 3)) +
-    ggplot2::xlab("Rank") +
-    ggplot2::ylab("Downloads (millions)")
+    ggplot2::labs(x = "Rank") +
+    ggplot2::labs(y = "Downloads (millions)")
 }
 
 #' Compute Downloads by Country Code.
@@ -106,7 +106,8 @@ downloadsCountry <- function(month_cran_log, multi.core = FALSE) {
 plotDownloadsCountry <- function() {
   dat <- packageRank::blog.data$download.country
   dat$downloads <- dat$downloads / 10^6
-  ggplot2::ggplot(data = dat, ggplot2::aes(x = .data$id, y = .data$downloads, label = .data$country)) +
+  ggplot2::ggplot(data = dat, ggplot2::aes(x = .data$id, y = .data$downloads,
+      label = .data$country)) +
     ggplot2::geom_line() +
     ggplot2::theme_bw() +
     ggplot2::theme(panel.grid.major = ggplot2::element_blank(),
@@ -119,6 +120,6 @@ plotDownloadsCountry <- function() {
     ggplot2::geom_point(size = 0.5) +
     ggplot2::scale_x_continuous(breaks = c(0, 100, 200)) +
     ggplot2::scale_y_continuous(breaks = c(0, 1, 2), limits = c(-0.25, 2.75)) +
-    ggplot2::xlab("Rank") +
-    ggplot2::ylab("Downloads (millions)")
+    ggplot2::labs(x = "Rank") +
+    ggplot2::labs(y = "Downloads (millions)")
 }

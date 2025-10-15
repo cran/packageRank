@@ -35,13 +35,26 @@ cranDownloads <- function(packages = NULL, when = NULL, from = NULL,
   pro.mode = FALSE) {
 
   if (pro.mode) {
-    cranDownloadsB(packages = packages, when = when, from = from, to = to,
-      fix.cranlogs = fix.cranlogs)
+    out <- cranDownloadsB(packages = packages, when = when, from = from,
+      to = to, fix.cranlogs = fix.cranlogs)
   } else {
-    cranDownloadsA(packages = packages, when = when, from = from, to = to, 
-      check.package = check.package, dev.mode = dev.mode, 
+    out <- cranDownloadsA(packages = packages, when = when, from = from, 
+      to = to,  check.package = check.package, dev.mode = dev.mode, 
       fix.cranlogs = fix.cranlogs)
   }
+  
+  missing <- packageRank::missing.dates %in% out$cranlogs.data$date
+
+  if (any(missing)) {
+    if (all(missing)) {
+      message(c("Missing: ", paste(packageRank::missing.dates,
+        collapse = ", ")))
+    } else if (any(missing)) {
+      message(c("Missing: ", paste(packageRank::missing.dates[missing],
+        collapse = ", ")))
+    }
+  }
+  out
 }
 
 #' Plot method for cranDownloads().
@@ -86,7 +99,7 @@ plot.cranDownloads <- function(x, statistic = "count", graphics = "auto",
   population.plot = FALSE, population.seed = as.numeric(Sys.Date()),
   multi.plot = FALSE, same.xy = TRUE, legend.location = "topleft",
   ip.legend.location = "topright", r.total = FALSE, dev.mode = FALSE,
-  unit.observation = "day", chatgpt = FALSE, weekend = FALSE, 
+  unit.observation = "day", chatgpt = "line", weekend = FALSE, 
   multi.core = FALSE, ...) {
 
   cores <- multiCore(multi.core)
@@ -108,9 +121,9 @@ plot.cranDownloads <- function(x, statistic = "count", graphics = "auto",
         call. = FALSE)
     }
     if (x$when == "last-month" & unit.observation == "month" &
-      graphics == "ggplot2") {
-        msg1 <- 'With when = "last-month" and graphics = "ggplot2", only'
-        msg2 <- 'unit.observation = "month" is not available.'
+        graphics == "ggplot2") {
+      msg1 <- 'With when = "last-month" and graphics = "ggplot2", only'
+      msg2 <- 'unit.observation = "month" is not available.'
       stop(paste(msg1, msg2), call. = FALSE)
     }
   }
@@ -169,6 +182,13 @@ plot.cranDownloads <- function(x, statistic = "count", graphics = "auto",
 
   obs.ct <- length(unique(x$cranlogs.data$date))
 
+  # Recode 0s to 1s when logarithm of count used
+  if (isTRUE(log.y)) {
+    fix.zero.log <- unit.observation == "day" & 
+                    x$cranlogs.data$count == 0
+    if (any(fix.zero.log)) x$cranlogs.data[fix.zero.log, "count"] <- 1L
+  }
+  
   if (points == "auto") {
     points <- ifelse(obs.ct <= 45, TRUE, FALSE)
   } else if (is.logical(points) == FALSE) {
@@ -194,8 +214,8 @@ plot.cranDownloads <- function(x, statistic = "count", graphics = "auto",
   } else {
     if (multi.plot) {
       multiPlot(x, statistic, graphics, obs.ct, log.y, legend.location,
-        ip.legend.location, points, smooth, se, f, span, unit.observation, 
-        chatgpt, chatgpt.release, weekend)
+        ip.legend.location, points, smooth, se, f, span, r.version,
+        unit.observation, chatgpt, chatgpt.release, weekend)
     } else {
       singlePlot(x, statistic, graphics, obs.ct, points, smooth, se, f,
         span, log.y, package.version, dev.mode, r.version, same.xy, 

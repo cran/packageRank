@@ -1,3 +1,45 @@
+### packageRank 0.9.7
+
+#### Data
+
+- add packageRank::missing.dates: 8/25-8/26 and 8/29-9/02 in 2025.
+
+
+#### Function Changes
+
+- amend data type in fetchCranLog(): Character to Date.
+- archive addSmoother(), smoothWeekData(), addSinglePlotSmoother() and 
+  addMultiPlotSmoother().
+- set cachem::cache_mem(max_size = 1.5 * 1024 * 1024^2) for memoise().
+- remove computation of sequenceFilter() from packageLog(all.filters = TRUE).
+- add/set logInfo(check.days = 7) and amend 'cranlogs' check.
+- set ipFilter(multi.core = FALSE) in packageLog().
+- add/set packageLog(version.filter = FALSE).
+- use pkgsearch::cran_package_history()$`crandb_file_date` for 
+  plot.cranDownloads(package.version).
+- use ggplot::labs().
+- add date argument to versionFilter().
+- amend/update filters in filteredDownloads(), packageCountry(), 
+  countryDistribution(), countryPackage() and ipPackage(); all.filters = TRUE 
+  only enables IP and small filters.
+- add packageHistory() version of versionFilter().
+
+
+#### Graphic/Plot Changes 
+
+- enable 'chatgpt' and 'r.version' arguments in 
+  plot.cranDownloads(graphics = "ggplot2")
+- add variable-sized polygons for packageRank::missing.dates.
+- add missingDatesPolygons() and gg_axis.annotation_polygon().
+- add annualPlot()
+- set plot.cranDownloads(chatgpt = "line").
+
+#### Fixes
+
+- fix plot.cranDownloads(weekend = TRUE).
+- add smoother subtitle to singlePlot(unit.observation != "day").
+
+
 ### packageRank 0.9.6
 
 #### Function Changes
